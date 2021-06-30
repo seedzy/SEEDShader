@@ -13,7 +13,7 @@ struct SurfaceLightData
 {
     half3 normalWS;
     half3 viewDirWS;
-    float3 positionWS;
+    //float3 positionWS;
     half3 albedo;
 
     half3 lightDirWS;
@@ -44,9 +44,9 @@ half3 GetPhongLight(SurfaceLightData i, float gloss, half3 color)
 /// <summary>
 /// 获得halfLambert漫反射
 /// </summary>
-half3 GetHLambertLight(SurfaceLightData i, half3 color)
+half3 GetHLambertLight(SurfaceLightData i, half3 diffuseColor)
 {
-    half3 diffuse = i.albedo * (0.5 * dot(i.normalWS, i.lightDirWS) + 0.5) * color;
+    half3 diffuse = i.albedo * (0.5 * dot(i.normalWS, i.lightDirWS) + 0.5) * diffuseColor;
     return diffuse;
 }
 
