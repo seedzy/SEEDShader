@@ -1,4 +1,4 @@
-Shader "URP_SimplePC/Lit"
+Shader "SEEDzy/URP/URP_SimplePC/Lit"
 {
     Properties
     {
@@ -76,6 +76,7 @@ Shader "URP_SimplePC/Lit"
         // this Subshader will fail. One can add a subshader below or fallback to Standard built-in to make this
         // material work with both Universal Render Pipeline and Builtin Unity Pipeline
         Tags{"RenderType" = "Opaque" "RenderPipeline" = "UniversalPipeline" "UniversalMaterialType" = "Lit" "IgnoreProjector" = "True" "ShaderModel"="4.5"}
+        //Tags{"RenderType" = "Opaque" }
         LOD 300
 
         // ------------------------------------------------------------------
