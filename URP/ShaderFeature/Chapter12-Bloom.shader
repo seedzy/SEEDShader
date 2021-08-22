@@ -21,7 +21,8 @@ Shader "SEEDzy/URP/RenderFeature/Bloom" {
         SAMPLER(sampler_BloomMaskRT);
 		
 		sampler2D _MainTex;
-		sampler2D _Bloom;
+		sampler2D _BloomS;
+		sampler2D _CameraOpaqueTexture;
 		struct a2v
 		{
 		    float4 vertex : POSITION;
@@ -87,16 +88,16 @@ Shader "SEEDzy/URP/RenderFeature/Bloom" {
 			o.uv.xy = v.texcoord;		
 			o.uv.zw = v.texcoord;
 			
-			#if UNITY_UV_STARTS_AT_TOP			
-			if (_MainTex_TexelSize.y < 0.0)
-				o.uv.w = 1.0 - o.uv.w;
-			#endif
+			// #if UNITY_UV_STARTS_AT_TOP			
+			// if (_MainTex_TexelSize.y < 0.0)
+			// 	o.uv.w = 1.0 - o.uv.w;
+			// #endif
 				        	
 			return o; 
 		}
 		
 		half4 fragBloom(v2fBloom i) : SV_Target {
-			return tex2D(_MainTex, i.uv.xy) + tex2D(_Bloom, i.uv.zw);
+			return tex2D(_MainTex, i.uv.xy) + tex2D(_CameraOpaqueTexture, i.uv.zw);
 		} 
 		
 		ENDHLSL
