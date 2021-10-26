@@ -28,7 +28,7 @@ Shader "SEEDzy/URP/RenderFeature/Gaussian Blur" {
 		  
 		v2f vertBlurVertical(a2v v) {
 			v2f o;
-			o.pos = TransformObjectToHClip(v.vertex);
+			o.pos = TransformObjectToHClip(v.vertex.xyz);
 			
 			half2 uv = v.texcoord;
 			
@@ -43,7 +43,7 @@ Shader "SEEDzy/URP/RenderFeature/Gaussian Blur" {
 		
 		v2f vertBlurHorizontal(a2v v) {
 			v2f o;
-			o.pos = TransformObjectToHClip(v.vertex);
+			o.pos = TransformObjectToHClip(v.vertex.xyz);
 			
 			half2 uv = v.texcoord;
 			

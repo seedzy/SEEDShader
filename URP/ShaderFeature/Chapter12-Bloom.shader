@@ -37,7 +37,7 @@ Shader "SEEDzy/URP/RenderFeature/Bloom" {
 		v2f vertBloomMask(a2v v)
 		{
 			v2f o;
-			o.pos = TransformObjectToHClip(v.vertex);
+			o.pos = TransformObjectToHClip(v.vertex.xyz);
 			o.uv = v.texcoord;		 
 			return o;
 		}
@@ -56,7 +56,7 @@ Shader "SEEDzy/URP/RenderFeature/Bloom" {
 		v2f vertExtractBright(a2v v) {
 			v2f o;
 			
-			o.pos = TransformObjectToHClip(v.vertex);
+			o.pos = TransformObjectToHClip(v.vertex.xyz);
 			
 			o.uv = v.texcoord;
 					 
@@ -69,8 +69,8 @@ Shader "SEEDzy/URP/RenderFeature/Bloom" {
 		
 		half4 fragExtractBright(v2f i) : SV_Target {
 			half4 c = tex2D(_MainTex, i.uv);
-			half mask = SAMPLE_TEXTURE2D(_BloomMaskRT, sampler_BloomMaskRT, i.uv);
-			half val = clamp(luminance(c) - _LuminanceThreshold, 0.0, 1.0);
+			half mask = SAMPLE_TEXTURE2D(_BloomMaskRT, sampler_BloomMaskRT, i.uv).r;
+			//half val = clamp(luminance(c) - _LuminanceThreshold, 0.0, 1.0);
 			
 			return c * mask;
 		}
@@ -84,7 +84,7 @@ Shader "SEEDzy/URP/RenderFeature/Bloom" {
 		v2fBloom vertBloom(a2v v) {
 			v2fBloom o;
 			
-			o.pos = TransformObjectToHClip (v.vertex);
+			o.pos = TransformObjectToHClip (v.vertex.xyz);
 			o.uv.xy = v.texcoord;		
 			o.uv.zw = v.texcoord;
 			

@@ -32,7 +32,7 @@ Shader "SEEDzy/URP_Feature/PrePass"
 			v2f vert (a2v i)
 			{
 				v2f o;
-				o.vertex = TransformObjectToHClip(i.vertex);
+				o.vertex = TransformObjectToHClip(i.vertex.xyz);
 				o.uv = i.uv;
 				return o;
 			}
