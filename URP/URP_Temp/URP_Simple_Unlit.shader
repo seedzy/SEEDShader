@@ -1,4 +1,4 @@
-Shader "SEEDzy/URP/URP_SimplePC/Unlit"
+Shader "SEEDzy/URP/URP_Temp/Unlit"
 {
     Properties
     {
@@ -18,13 +18,11 @@ Shader "SEEDzy/URP/URP_SimplePC/Unlit"
 
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 
-
             CBUFFER_START(UnityPerMaterial)
             float4 _MainTex_ST;
             CBUFFER_END
 
-            TEXTURE2D(_MainTex);
-            SAMPLER(sampler_MainTex);
+            TEXTURE2D(_MainTex);        SAMPLER(sampler_MainTex);
             
             struct a2v
             {
@@ -37,6 +35,10 @@ Shader "SEEDzy/URP/URP_SimplePC/Unlit"
                 float2 uv : TEXCOORD0;
                 float4 positionCS : SV_POSITION;
             };
+
+            
+            
+            
 
             v2f vert (a2v i)
             {
