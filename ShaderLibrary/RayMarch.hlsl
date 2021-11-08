@@ -23,7 +23,7 @@ half BeersLaw(half distance, half attenuation)
     //=C(b-a)
     //数学真tm好
     half depth = distance * attenuation;
-    return pow(E, depth);
+    return pow(E, -depth);
 }
 
 
@@ -122,7 +122,7 @@ float RayMarchHeightMap(
         RayUVz += RayStepUVz;
         //确保步进不超出纹理UV范围
         RayUVz.xy = saturate(RayUVz.xy);
-        float SampleDepth = dot(heightMapChannel, SAMPLE_TEXTURE2D(_HeightMap, sampler_HeightMap, RayUVz.xy));
+        float SampleDepth = dot(heightMapChannel, SAMPLE_TEXTURE2D_LOD(_HeightMap, sampler_HeightMap, RayUVz.xy, 0));
         DepthDiff = abs(RayUVz.z) - abs(SampleDepth);
 
 
@@ -157,7 +157,7 @@ float RayMarchHeightMap(
     //Run one more iteration outside of the loop. Using the Box Intersection in the material graph, we precompute the number of whole steps that can be run which leaves one final 'short step' which is the remainder that is traced here. This was cheaper than checking or clamping the UVs inside of the loop.
     RayUVz += RayStepUVz;
     RayUVz.xy = saturate(RayUVz.xy);
-    float SampleDepth = dot( heightMapChannel, SAMPLE_TEXTURE2D(_HeightMap, sampler_HeightMap, RayUVz.xy));
+    float SampleDepth = dot( heightMapChannel, SAMPLE_TEXTURE2D_LOD(_HeightMap, sampler_HeightMap, RayUVz.xy, 0));
     DepthDiff = abs(RayUVz.z) - abs(SampleDepth);
 
 
@@ -193,7 +193,7 @@ float2 RayMarch2DCloud(
     TEXTURE2D_PARAM(_CloudHeightMap, sampler_CloudHeightMap),
     float2 uv,
     float3 lightDirTS,
-    int maxSteps = 64,
+    half maxSteps = 64,
     half attenuation = 8.0,
     half startBias = 0.05,
     half heightScale = 1.0,
@@ -209,7 +209,8 @@ float2 RayMarch2DCloud(
     float heightReturn = height;
     
     height *= (1- startBias);
-    float3 rayOrigin = float3(frac(uv), height);
+    //由于高度图模拟的容器z方向大小由2倍height构成，为了使容器内任意一点坐标能够映射到与UV相同的(0-1),因此单倍height需要映射至0.5-1
+    float3 rayOrigin = float3(frac(uv), (height + 1) * 0.499);
     //由高度图模拟的包围盒求交
     float4 rayBoxReturn = rayBoxDst(0, 1, rayOrigin, 1/lightVectorTS);
     //独立出1/减少运算
@@ -234,6 +235,7 @@ float2 RayMarch2DCloud(
         0,
         heightMapChannel
         );
+    //return float2(lightRayDis, heightReturn);
     return float2(BeersLaw(lightRayDis, attenuation), heightReturn);
 }
 
