@@ -188,18 +188,18 @@ float RayMarchHeightMap(
 /// <param name="traceDistance">光线步进的最大距离(2D云有uv限制，不要超过1)</param>
 /// <param name="temporalJitter">是否对步进方向进行时间性扰动</param>
 /// <param name="heightMapChannel">指定存储高度数据的通道，默认为r</param>
-/// <returns>float2(光线, 高度图采样数据)</returns>
+/// <returns>float2(光线强度, 高度图采样数据)</returns>
 float2 RayMarch2DCloud(
     TEXTURE2D_PARAM(_CloudHeightMap, sampler_CloudHeightMap),
     float2 uv,
     float3 lightDirTS,
-    half maxSteps = 64,
+    half maxSteps = 128,
     half attenuation = 8.0,
     half startBias = 0.05,
     half heightScale = 1.0,
     half traceDistance = 1.0,
     bool temporalJitter = true,
-    half4 heightMapChannel = half4(1,0,0,0)
+    half4 heightMapChannel = half4(0,0,1,0)
     )
 {
     lightDirTS = normalize(lightDirTS);
