@@ -5,6 +5,16 @@
 #pragma once
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+#include "BRDF/BRDF.hlsl"
+
+#define F0 half4(0.04, 0.04, 0.04, 1.0 - 0.04)
+
+struct BRDFInput
+{
+    half3 preDiffuse;
+    half3 specular;
+    half  roughness;
+};
 
 /// <summary>
 /// 表面光照需要的数据，务必归一化
@@ -50,10 +60,112 @@ half3 GetHLambertLight(SurfaceLightData i, half3 diffuseColor)
     return diffuse;
 }
 
-//世界空间转切线空间
-#define TANGENT_SPACE_ROTATION \
-float3 binormal = cross( normalize(v.normal), normalize(v.tangent.xyz) ) * v.tangent.w; \
-float3x3 rotation = float3x3( v.tangent.xyz, binormal, v.normal )
+/// <summary>
+/// BlackOps2拟合的环境光照高光BRDF
+/// </summary>
+float3 EnvironmentBRDF_BlackOps2Approximation(float g, float NoV, float3 rf0)
+{
+    float4 t = float4(1 / 0.96, 0.475, (0.0275 - 0.25 * 0.04) / 0.96, 0.25);
+    t *= float4(g, g, g, g);
+    t += float4(0, 0, (0.015 - 0.75 * 0.04) / 0.96, 0.75);
+    float a0 = t.x * min(t.y, exp2(-9.28 * NoV)) + t.z;
+    float a1 = t.w;
+    return saturate(lerp(a0, a1, rf0));
+}
 
+/// <summary>
+/// 计算间接光照(Specular通过BRDF Lut计算，此处BRDF不是完整公式，只包含specularTerm)
+/// 再次注意!!最终进入摄像机的光照能量等于原始光线辐照度 * BRDF
+/// </summary>
+half3 IndirectLight_Lut(BRDFData brdfData,half3 bakedGI, half occlusion,
+    half3 normalWS, half3 viewDirectionWS)
+{
+    half3 reflectVector = reflect(-viewDirectionWS, normalWS);
+    half NoV = saturate(dot(normalWS, viewDirectionWS));
+    half3 fresnelTerm = FresnelSchlickRoughness(NoV, F0, brdfData.perceptualRoughness);
+
+    half3 irradianceDiffuse = bakedGI * occlusion;
+    half3 irradianceSpecular = GlossyEnvironmentReflection(reflectVector, brdfData.perceptualRoughness, occlusion);
+
+    /////////////////////////////间接光照BRDF
+    //Indirect diffuse的颜色计算
+    half3 color = irradianceDiffuse * brdfData.diffuse;
+    //Indirect Specular的颜色计算
+    half2 specBrdf = BRDF_Specular_Lut(NoV, brdfData.perceptualRoughness);
+    color += irradianceSpecular * half3(fresnelTerm * specBrdf.x + specBrdf.y);
+
+    return color;
+}
+
+/// <summary>
+/// 使用Lut采样高光的PBR光照
+/// </summary>
+half4 PBR_Lut(InputData inputData, SurfaceData surfaceData)
+{
+#ifdef _SPECULARHIGHLIGHTS_OFF
+    bool specularHighlightsOff = true;
+#else
+    bool specularHighlightsOff = false;
+#endif
+
+    BRDFData brdfData;
+
+    // NOTE: can modify alpha
+    InitializeBRDFData(surfaceData.albedo, surfaceData.metallic, surfaceData.specular, surfaceData.smoothness, surfaceData.alpha, brdfData);
+
+    BRDFData brdfDataClearCoat = (BRDFData)0;
+#if defined(_CLEARCOAT) || defined(_CLEARCOATMAP)
+    // base brdfData is modified here, rely on the compiler to eliminate dead computation by InitializeBRDFData()
+    InitializeBRDFDataClearCoat(surfaceData.clearCoatMask, surfaceData.clearCoatSmoothness, brdfData, brdfDataClearCoat);
+#endif
+
+    // To ensure backward compatibility we have to avoid using shadowMask input, as it is not present in older shaders
+#if defined(SHADOWS_SHADOWMASK) && defined(LIGHTMAP_ON)
+    half4 shadowMask = inputData.shadowMask;
+#elif !defined (LIGHTMAP_ON)
+    half4 shadowMask = unity_ProbesOcclusion;
+#else
+    half4 shadowMask = half4(1, 1, 1, 1);
+#endif
+
+    Light mainLight = GetMainLight(inputData.shadowCoord, inputData.positionWS, shadowMask);
+
+    #if defined(_SCREEN_SPACE_OCCLUSION)
+        AmbientOcclusionFactor aoFactor = GetScreenSpaceAmbientOcclusion(inputData.normalizedScreenSpaceUV);
+        mainLight.color *= aoFactor.directAmbientOcclusion;
+        surfaceData.occlusion = min(surfaceData.occlusion, aoFactor.indirectAmbientOcclusion);
+    #endif
+
+    MixRealtimeAndBakedGI(mainLight, inputData.normalWS, inputData.bakedGI);
+    half3 color = IndirectLight_Lut(brdfData, inputData.bakedGI, surfaceData.occlusion,
+                                     inputData.normalWS, inputData.viewDirectionWS);
+    color += LightingPhysicallyBased(brdfData, brdfDataClearCoat,
+                                     mainLight,
+                                     inputData.normalWS, inputData.viewDirectionWS,
+                                     surfaceData.clearCoatMask, specularHighlightsOff);
+
+#ifdef _ADDITIONAL_LIGHTS
+    uint pixelLightCount = GetAdditionalLightsCount();
+    for (uint lightIndex = 0u; lightIndex < pixelLightCount; ++lightIndex)
+    {
+        Light light = GetAdditionalLight(lightIndex, inputData.positionWS, shadowMask);
+        #if defined(_SCREEN_SPACE_OCCLUSION)
+            light.color *= aoFactor.directAmbientOcclusion;
+        #endif
+        color += LightingPhysicallyBased(brdfData, brdfDataClearCoat,
+                                         light,
+                                         inputData.normalWS, inputData.viewDirectionWS,
+                                         surfaceData.clearCoatMask, specularHighlightsOff);
+    }
+#endif
+
+#ifdef _ADDITIONAL_LIGHTS_VERTEX
+    color += inputData.vertexLighting * brdfData.diffuse;
+#endif
+
+    color += surfaceData.emission;
+
+    return half4(color, surfaceData.alpha);
+}
 
 #endif

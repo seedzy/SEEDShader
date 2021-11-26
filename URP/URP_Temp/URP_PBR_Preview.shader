@@ -1,4 +1,4 @@
-Shader "URP_Universal/Lit"
+Shader "SEEDzy/URP/URP_PBR_Preview/Lit"
 {
     Properties
     {
@@ -76,6 +76,7 @@ Shader "URP_Universal/Lit"
         // this Subshader will fail. One can add a subshader below or fallback to Standard built-in to make this
         // material work with both Universal Render Pipeline and Builtin Unity Pipeline
         Tags{"RenderType" = "Opaque" "RenderPipeline" = "UniversalPipeline" "UniversalMaterialType" = "Lit" "IgnoreProjector" = "True" "ShaderModel"="4.5"}
+        //Tags{"RenderType" = "Opaque" }
         LOD 300
 
         // ------------------------------------------------------------------
@@ -134,10 +135,39 @@ Shader "URP_Universal/Lit"
             #pragma multi_compile _ DOTS_INSTANCING_ON
 
             #pragma vertex LitPassVertex
-            #pragma fragment LitPassFragment
+            #pragma fragment LitPassFragment_Preview
 
             #include "Packages/com.unity.render-pipelines.universal/Shaders/LitInput.hlsl"
             #include "Packages/com.unity.render-pipelines.universal/Shaders/LitForwardPass.hlsl"
+
+            half4 LitPassFragment_Preview(Varyings input) : SV_Target
+            {
+                UNITY_SETUP_INSTANCE_ID(input);
+                UNITY_SETUP_STEREO_EYE_INDEX_POST_VERTEX(input);
+
+            #if defined(_PARALLAXMAP)
+            #if defined(REQUIRES_TANGENT_SPACE_VIEW_DIR_INTERPOLATOR)
+                half3 viewDirTS = input.viewDirTS;
+            #else
+                half3 viewDirTS = GetViewDirectionTangentSpace(input.tangentWS, input.normalWS, input.viewDirWS);
+            #endif
+                ApplyPerPixelDisplacement(viewDirTS, input.uv);
+            #endif
+
+                SurfaceData surfaceData;
+                InitializeStandardLitSurfaceData(input.uv, surfaceData);
+
+                InputData inputData;
+                InitializeInputData(input, surfaceData.normalTS, inputData);
+
+                half4 color = UniversalFragmentPBR(inputData, surfaceData);
+
+                color.rgb = MixFog(color.rgb, inputData.fogCoord);
+                color.a = OutputAlpha(color.a, _Surface);
+
+                return color;
+            }
+            
             ENDHLSL
         }
 

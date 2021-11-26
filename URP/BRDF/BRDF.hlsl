@@ -4,6 +4,9 @@
 
 #define UNITY_INV_PI        0.31830988618f
 
+Texture2D _SpecularBRDFTex;         SamplerState sampler_SpecularBRDFTex;
+
+
 inline float SmoothToRoughness(float smoothness)
 {
     float perceptualRoughness = PerceptualSmoothnessToPerceptualRoughness(smoothness);
@@ -50,6 +53,14 @@ inline half3 FresnelLerpFast (half3 F0, half3 F90, half cosA)
     return lerp (F0, F90, t);
 }
 
+/// <summary>
+/// 混入粗糙度因子的F项，主要在间接光使用
+/// </summary>
+inline half3 FresnelSchlickRoughness(float cosTheta, half3 F0, float roughness)
+{
+    return F0 + (max((1.0 - roughness).rrr, F0) - F0) * Pow5(1.0 - cosTheta);
+}
+
 inline float GGXTerm (float NdotH, float roughness)
 {
     float a2 = roughness * roughness;
@@ -64,6 +75,14 @@ half DisneyDiffuse(half NdotV, half NdotL, half LdotH, half perceptualRoughness)
     half lightScatter   = (1 + (fd90 - 1) * Pow5(1 - NdotL));
     half viewScatter    = (1 + (fd90 - 1) * Pow5(1 - NdotV));
     return lightScatter * viewScatter;
+}
+
+/// <summary>
+/// 采样SpecularBRDF Lut
+/// </summary>
+half2 BRDF_Specular_Lut(half NdotV, half roughness)
+{
+    return _SpecularBRDFTex.Sample(sampler_SpecularBRDFTex, half2(NdotV, roughness)).rg;
 }
 
 #endif
