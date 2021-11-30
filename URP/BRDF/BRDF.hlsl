@@ -6,6 +6,12 @@
 
 Texture2D _SpecularBRDFTex;         SamplerState sampler_SpecularBRDFTex;
 
+struct BRDFInput
+{
+    half3 preDiffuse;
+    half3 specular;
+    half  roughness;
+};
 
 inline float SmoothToRoughness(float smoothness)
 {

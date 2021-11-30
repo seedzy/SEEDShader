@@ -9,12 +9,6 @@
 
 #define F0 half4(0.04, 0.04, 0.04, 1.0 - 0.04)
 
-struct BRDFInput
-{
-    half3 preDiffuse;
-    half3 specular;
-    half  roughness;
-};
 
 /// <summary>
 /// 表面光照需要的数据，务必归一化
@@ -114,10 +108,6 @@ half4 PBR_Lut(InputData inputData, SurfaceData surfaceData)
     InitializeBRDFData(surfaceData.albedo, surfaceData.metallic, surfaceData.specular, surfaceData.smoothness, surfaceData.alpha, brdfData);
 
     BRDFData brdfDataClearCoat = (BRDFData)0;
-#if defined(_CLEARCOAT) || defined(_CLEARCOATMAP)
-    // base brdfData is modified here, rely on the compiler to eliminate dead computation by InitializeBRDFData()
-    InitializeBRDFDataClearCoat(surfaceData.clearCoatMask, surfaceData.clearCoatSmoothness, brdfData, brdfDataClearCoat);
-#endif
 
     // To ensure backward compatibility we have to avoid using shadowMask input, as it is not present in older shaders
 #if defined(SHADOWS_SHADOWMASK) && defined(LIGHTMAP_ON)
