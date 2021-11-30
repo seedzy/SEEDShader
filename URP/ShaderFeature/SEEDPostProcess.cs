@@ -6,21 +6,23 @@ using UnityEditor;
 using SEED.Rendering;
 using Sirenix.OdinInspector;
 using UnityEngine.Experimental.Rendering;
-using DepthOfField = SEED.Rendering.DepthOfFieldSetting;
+using DepthOfFieldSetting = SEED.Rendering.DepthOfFieldSetting;
 
 
 
 public class SEEDPostProcess : ScriptableRendererFeature
 { 
     
-    [Toggle("enable"), GUIColor(0.8f,0.85f,1)]
+    [Toggle("enable"),              GUIColor(0.8f,0.85f,1)]
    public ScreenSpaceShadowSetting screenSpaceShadowSetting = new ScreenSpaceShadowSetting();
-   [Toggle("bloomOn"),             GUIColor(0.8f,0.85f,1)]
+   [Toggle("enable"),               GUIColor(0.8f,0.85f,1)]
    public SEED.Rendering.BloomSetting bloom          = new SEED.Rendering.BloomSetting();
-   [Toggle("gaussianOn"),          GUIColor(0.8f,0.85f,1)]
+   [Toggle("enable"),               GUIColor(0.8f,0.85f,1)]
    public SEED.Rendering.GaussianSetting gaussian    = new SEED.Rendering.GaussianSetting();
-   [Toggle("depthOfFieldOn"),      GUIColor(0.8f,0.85f,1)]
-   public DepthOfField depthOfField           = new DepthOfField();
+   [Toggle("enable"),               GUIColor(0.8f,0.85f,1)]
+   public DepthOfFieldSetting depthOfField           = new DepthOfFieldSetting();
+   [Toggle("enable"),               GUIColor(0.8f,0.85f,1)]
+   public GPUInstanceSetting gpuInstanceSetting      = new GPUInstanceSetting();
    
    class SEEDPostProcessPass : ScriptableRenderPass
     {
@@ -38,10 +40,12 @@ public class SEEDPostProcess : ScriptableRendererFeature
         {
         }
     }
-
-   private ScreenSpaceShadowTexPass  SSShadow     = null;
-   private ScreenSpaceShadowPostPass SSShadowPost = null;
-   private SEEDPostProcessPass       PPPass       = null;
+    
+   private SEEDPostProcessPass       PPPass             = null;
+   private ScreenSpaceShadowTexPass  SSShadow           = null;
+   private ScreenSpaceShadowPostPass SSShadowPost       = null;
+   private GPUInstancePass           GPUInstancePass    = null;
+   
 
 
    /// <summary>
@@ -57,6 +61,12 @@ public class SEEDPostProcess : ScriptableRendererFeature
 
            SSShadowPost = new ScreenSpaceShadowPostPass();
            SSShadowPost.renderPassEvent = RenderPassEvent.BeforeRenderingTransparents;
+       }
+
+       if (gpuInstanceSetting.enable)
+       {
+           GPUInstancePass = new GPUInstancePass(gpuInstanceSetting);
+           GPUInstancePass.renderPassEvent = RenderPassEvent.BeforeRenderingOpaques;
        }
        //PostProcessMainPass
        PPPass = new SEEDPostProcessPass();

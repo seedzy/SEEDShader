@@ -35,30 +35,40 @@ namespace SEED.Rendering
     [Serializable]
     public class ScreenSpaceFogSetting
     {
-        public bool screenSpaceFogOn = false;
+        public bool enable = false;
     }
     
     [Serializable]
     public class BloomSetting
     {
-        public bool bloomOn = false;
+        public bool enable = false;
     }
     
     [Serializable]
     public class GaussianSetting
     {
-        public bool gaussianOn = false;
+        public bool enable = false;
     }
     
     [Serializable]
     public class DepthOfFieldSetting
     {
-        public bool depthOfFieldOn = false;
+        public bool enable = false;
     }
     
     [Serializable]
     public class VolumeCloudSetting
     {
-        public bool volumeCloudOn = false;
+        public bool enable = false;
+    }
+    
+    [Serializable]
+    public class GPUInstanceSetting
+    {
+        public bool enable = false;
+        [Header("Instance对象")]
+        public Mesh instanceObj = null;
+        [Header("需要Instance指定Mesh的平面")]
+        public Mesh ground = null;
     }
 }
