@@ -66,9 +66,14 @@ namespace SEED.Rendering
     public class GPUInstanceSetting
     {
         public bool enable = false;
-        [Header("Instance对象")]
-        public Mesh instanceObj = null;
-        [Header("需要Instance指定Mesh的平面")]
-        public Mesh ground = null;
+        [Header("需要实例化的对象")]
+        public MeshFilter instanceObj = null;
+        [Header("需要实例化指定Mesh的平面")]
+        public MeshFilter ground = null;
+        [Header("最大实例化数量")]
+        public int maxInstanceCount = 10000;
+        [Header("实例化密度")] 
+        public int instanceDensity = 5;
+
     }
 }

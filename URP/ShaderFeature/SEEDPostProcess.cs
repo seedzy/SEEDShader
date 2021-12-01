@@ -34,10 +34,12 @@ public class SEEDPostProcess : ScriptableRendererFeature
         }
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
+            
         }
         
         public override void OnCameraCleanup(CommandBuffer cmd)
         {
+            
         }
     }
     
