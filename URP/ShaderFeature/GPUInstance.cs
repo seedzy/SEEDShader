@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using SEED.Rendering;
 using Sirenix.OdinInspector.Editor.Validation;
 using UnityEngine;
@@ -10,16 +11,40 @@ using UnityEngine.Rendering.Universal;
 /// </summary>
 public struct GrassInfo
 {
-    public Matrix4x4 localToGround;
-    public Vector4 texParams;
+    //4行4列，共16个float，共64byte
+    public Matrix4x4 transformMatrix;
+    //4个float，共16byte
+    public Vector4 transformTex;
+}
+
+internal class ShaderProperties
+{
+    internal static int obj2World = Shader.PropertyToID("_Obj2World");
+    internal static int grassInfos = Shader.PropertyToID("_GrassInfos");
+    //public static int Grass
 }
 
 class GPUInstancePass : ScriptableRenderPass
 {
+    private const string cmdName = "GPUInstance";
+    private CommandBuffer _cmd;
     private GPUInstanceSetting _gpuInstanceSetting;
+    private Material _material;
+    private MaterialPropertyBlock _materialBlock;
+    private Transform _groundTran;
+    private MeshFilter _groundMF;
+    
     public GPUInstancePass(GPUInstanceSetting gpuInstanceSetting)
     {
         _gpuInstanceSetting = gpuInstanceSetting;
+        _material = CoreUtils.CreateEngineMaterial(ShaderPath.GPUInstanceGrass);
+        _material.enableInstancing = true;
+        _materialBlock = new MaterialPropertyBlock();
+        if (_gpuInstanceSetting?.groundTran != null)
+        {
+            _groundTran = _gpuInstanceSetting.groundTran;
+            _groundMF = _groundTran.GetComponent<MeshFilter>();
+        }
     }
     public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
     {
@@ -28,11 +53,42 @@ class GPUInstancePass : ScriptableRenderPass
 
     public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
     {
+        if(_groundTran == null || _gpuInstanceSetting.instanceMesh == null)
+            return;
+        
+        _cmd = CommandBufferPool.Get(cmdName);
+        ComputeBuffer cb = InstanceBuffer.GetGrassBuffer(
+            _groundMF,
+            _gpuInstanceSetting.maxInstanceCount,
+            _gpuInstanceSetting.instanceDensity);
+        //将矩阵和Cbuffer(不是那个cbuffer，你懂得)，发送到GPU(就是Shader里)
+        _materialBlock.SetMatrix(ShaderProperties.obj2World, _groundTran.localToWorldMatrix);
+        _materialBlock.SetBuffer(ShaderProperties.grassInfos, cb);
+
+        Debug.LogWarning(InstanceBuffer.InstanceCount);
+        _cmd.DrawMeshInstancedProcedural(_gpuInstanceSetting.instanceMesh, 0, _material, 0, InstanceBuffer.InstanceCount, _materialBlock);
+        
+        context.ExecuteCommandBuffer(_cmd);
+        CommandBufferPool.Release(_cmd);
     }
 
     public override void OnCameraCleanup(CommandBuffer cmd)
     {
+        InstanceBuffer.Release();
     }
+    
+    // /// <summary>
+    // /// 记录materialblock(可以避免同材质不同属性时创建过多副本)
+    // /// ToDo：原理嘛。。。。不知道
+    // /// </summary>
+    // public MaterialPropertyBlock MaterialPropertyBlock{
+    //     get{
+    //         if(_materialBlock == null){
+    //             _materialBlock = new MaterialPropertyBlock();
+    //         }
+    //         return _materialBlock;
+    //     }
+    // }
     
 }
 
@@ -41,12 +97,32 @@ class GPUInstancePass : ScriptableRenderPass
 /// </summary>
 class InstanceBuffer
 {
+    private static int instancedCount;
     private static ComputeBuffer grassBuffer = null;
 
-    public static ComputeBuffer GetGrassBuffer(MeshFilter ground, Matrix4x4 obj2World, int instanceDensity)
+    public static void Release()
     {
-        if (grassBuffer == null)
+        if(grassBuffer != null)
+            grassBuffer.Release();
+    }
+
+    /// <summary>
+    /// 获取当前实例化对象数量，暂时这样写，后面可能会改？
+    /// </summary>
+    public static int InstanceCount
+    {
+        get
         {
+            return instancedCount;
+        }
+    }
+
+    public static ComputeBuffer GetGrassBuffer(MeshFilter ground, int maxInstanceCount, int instanceDensity)
+    {
+        if (grassBuffer == null && ground != null)
+        {
+            //记录已经实例化的数量
+            int count = 0;
             Mesh groundMesh = ground.sharedMesh;
             List<GrassInfo> grassInfos = new List<GrassInfo>();
             
@@ -68,19 +144,36 @@ class InstanceBuffer
 
                 //计算当前三角内的实例化数量
                 float triArea = SEED.Math.GetAreaOfTriangle(v1, v2, v3);
-                int instanceCount = (int)Mathf.Max(1,triArea * instanceDensity);
-
+                float triInstanceCount = (int)Mathf.Max(1,triArea * instanceDensity);
                 //计算当前三角的面法线，使实例化对象能与生成平面垂直
                 Vector3 triFaceNormal = SEED.Math.GetFaceNormal(v1, v2, v3);
-                for (int j = 0; j < instanceCount; j++)
+                
+                for (int j = 0; j < triInstanceCount; j++)
                 {
                     Vector3 instancePos = SEED.Math.RandomPointInsideTriangle(v1, v2, v3);
                     Vector4 transformTex = Vector4.one;
+                    //构建transformRotationScale矩阵
                     Matrix4x4 transformMatrix = Matrix4x4.TRS(instancePos,
-                        Quaternion.Euler(0, Random.Range(0, 180), 0) * triFaceNormal, Vector3.one);
+                        Quaternion.FromToRotation(Vector3.up, triFaceNormal) * Quaternion.Euler(0, Random.Range(0, 180), 0), Vector3.one);
+                    
+                    GrassInfo grassInfo = new GrassInfo()
+                    {
+                        transformMatrix = transformMatrix,
+                        transformTex = transformTex
+                    };
+                    grassInfos.Add(grassInfo);
+                    count++;
+                    if (count >= maxInstanceCount)
+                        break;
                 }
-
+                if (count >= maxInstanceCount)
+                    break;
             }
+
+            Debug.LogWarning(grassInfos[1].transformMatrix);
+            instancedCount = count;
+            grassBuffer = new ComputeBuffer(instancedCount, 64 + 16);
+            grassBuffer.SetData(grassInfos);
         }
         return grassBuffer;
     }

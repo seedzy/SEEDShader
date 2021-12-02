@@ -93,6 +93,11 @@ public class SEEDPostProcess : ScriptableRendererFeature
                renderer.EnqueuePass(SSShadowPost);
            }
        }
+
+       if (gpuInstanceSetting.enable)
+       {
+           renderer.EnqueuePass(GPUInstancePass);
+       }
    }
        
 }
