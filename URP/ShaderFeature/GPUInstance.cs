@@ -37,14 +37,20 @@ class GPUInstancePass : ScriptableRenderPass
     public GPUInstancePass(GPUInstanceSetting gpuInstanceSetting)
     {
         _gpuInstanceSetting = gpuInstanceSetting;
-        _material = CoreUtils.CreateEngineMaterial(ShaderPath.GPUInstanceGrass);
-        _material.enableInstancing = true;
         _materialBlock = new MaterialPropertyBlock();
+        
         if (_gpuInstanceSetting?.groundTran != null)
         {
             _groundTran = _gpuInstanceSetting.groundTran;
             _groundMF = _groundTran.GetComponent<MeshFilter>();
         }
+        if (_gpuInstanceSetting.material == null)
+        {
+            Debug.LogWarning("你确定连个Material都不放吗？");
+            _material = CoreUtils.CreateEngineMaterial("Hidden/Universal Render Pipeline/FallbackError");
+        }
+        else
+            _material = _gpuInstanceSetting.material;
     }
     public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
     {
@@ -53,10 +59,16 @@ class GPUInstancePass : ScriptableRenderPass
 
     public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
     {
-        if(_groundTran == null || _gpuInstanceSetting.instanceMesh == null)
+        if(_groundTran == null || _gpuInstanceSetting.instanceMesh == null || _material == null)
             return;
         
         _cmd = CommandBufferPool.Get(cmdName);
+        
+        if (_gpuInstanceSetting.rebuildCBuffer)
+        {
+            InstanceBuffer.Release();
+            _gpuInstanceSetting.rebuildCBuffer = false;
+        }
         ComputeBuffer cb = InstanceBuffer.GetGrassBuffer(
             _groundMF,
             _gpuInstanceSetting.maxInstanceCount,
@@ -74,7 +86,7 @@ class GPUInstancePass : ScriptableRenderPass
 
     public override void OnCameraCleanup(CommandBuffer cmd)
     {
-        InstanceBuffer.Release();
+        //InstanceBuffer.Release();
     }
     
     // /// <summary>
@@ -100,10 +112,16 @@ class InstanceBuffer
     private static int instancedCount;
     private static ComputeBuffer grassBuffer = null;
 
+    /// <summary>
+    /// 不要乱调啊，在你不想再Instance之前不要清除ComputeBuffer
+    /// </summary>
     public static void Release()
     {
-        if(grassBuffer != null)
+        if (grassBuffer != null)
+        {
             grassBuffer.Release();
+            grassBuffer = null;
+        }
     }
 
     /// <summary>
@@ -170,7 +188,8 @@ class InstanceBuffer
                     break;
             }
 
-            Debug.LogWarning(grassInfos[1].transformMatrix);
+            if(grassInfos.Count >= 1)
+                Debug.LogWarning(grassInfos[0].transformMatrix);
             instancedCount = count;
             grassBuffer = new ComputeBuffer(instancedCount, 64 + 16);
             grassBuffer.SetData(grassInfos);

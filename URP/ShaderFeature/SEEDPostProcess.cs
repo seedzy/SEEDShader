@@ -68,6 +68,8 @@ public class SEEDPostProcess : ScriptableRendererFeature
        if (gpuInstanceSetting.enable)
        {
            GPUInstancePass = new GPUInstancePass(gpuInstanceSetting);
+           //注意！！即便使用GPUInstance托管实例化，依然受到硬件Early-Z优化，当Instance数量过大是有较为明显优化，
+           //因此把instance延迟到opaque之后，进行剔除
            GPUInstancePass.renderPassEvent = RenderPassEvent.BeforeRenderingOpaques;
        }
        //PostProcessMainPass
