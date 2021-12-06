@@ -25,12 +25,6 @@ namespace SEED.Rendering
         public bool enable = false;
         [Range(1, 10)]
         public int downSample = 1;
-        
-        public ScreenSpaceShadowSetting()
-        {
-            //material = CoreUtils.CreateEngineMaterial(ShaderPath.screenSpaceShadow);
-        }
-        
     }
 
     [Serializable]

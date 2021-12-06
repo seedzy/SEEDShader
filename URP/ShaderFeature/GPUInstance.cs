@@ -33,6 +33,48 @@ class GPUInstancePass : ScriptableRenderPass
     private MaterialPropertyBlock _materialBlock;
     private Transform _groundTran;
     private MeshFilter _groundMF;
+
+    public void GenerateMipMaps(int width, int height)
+    {
+        // int level = 0;
+        // RenderTexture lastRT;
+        // RenderTexture tempRT;
+        // //小于8像素真的没用了吗？？
+        // while (height > 8)
+        // {
+        //     
+        // }
+
+        #region GenerateMipMapsExample
+        // int w = hzbDepth.width;
+        // int h = hzbDepth.height;
+        // int level = 0;
+        // RenderTexture lastRt = null;
+        // RenderTexture tempRT;
+        // while (h > 8)
+        // {
+        //     hzbMat.SetVector(ID_InvSize, new Vector4(1.0f / w, 1.0f / h, 0, 0));
+        //     tempRT = RenderTexture.GetTemporary(w, h, 0, hzbDepth.format);
+        //     tempRT.filterMode = FilterMode.Point;
+        //     if (lastRt == null)
+        //     {
+        //         Graphics.Blit(Shader.GetGlobalTexture("_CameraDepthTexture"), tempRT);
+        //     }
+        //     else
+        //     {
+        //         hzbMat.SetTexture(ID_DepthTexture, lastRt);
+        //         Graphics.Blit(null, tempRT, hzbMat);
+        //         RenderTexture.ReleaseTemporary(lastRt);
+        //     }
+        //     Graphics.CopyTexture(tempRT, 0, 0, hzbDepth, 0, level);
+        //     lastRt = tempRT;
+        //
+        //     w /= 2;
+        //     h /= 2;
+        //     level++;
+        // }
+        #endregion
+    }
     
     public GPUInstancePass(GPUInstanceSetting gpuInstanceSetting)
     {
