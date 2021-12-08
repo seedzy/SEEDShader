@@ -5,6 +5,7 @@ using Sirenix.OdinInspector;
 using Sirenix.Serialization;
 using UnityEngine;
 using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 
 namespace SEED.Rendering
 {
@@ -13,6 +14,7 @@ namespace SEED.Rendering
     {
         internal static string screenSpaceShadowPath = "Hidden/Universal Render Pipeline/ScreenSpaceShadows";
         internal static string GPUInstanceGrass = "SEEDzy/URP/GPUInstance/Grass";
+        internal static string GenerateMipMaps = "SEEDzy/URP/GenerateMipMaps";
     }
     #endregion
     
@@ -73,8 +75,9 @@ namespace SEED.Rendering
         public int maxInstanceCount = 10000;
         [Header("实例化密度"),Range(1, 100)] 
         public int instanceDensity = 5;
-
-        [Button(ButtonSizes.Large)]
+        [Header("GPUInstance的执行时机(仅供调试，别乱改)")] 
+        public RenderPassEvent renderPassEvent = RenderPassEvent.BeforeRenderingOpaques;
+        [Button(ButtonSizes.Large),PropertySpace]
         private void RebuildCBuffer()
         {
             rebuildCBuffer = !rebuildCBuffer;

@@ -1,7 +1,5 @@
 using System.Collections.Generic;
-using System.Runtime.CompilerServices;
 using SEED.Rendering;
-using Sirenix.OdinInspector.Editor.Validation;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
@@ -34,48 +32,6 @@ class GPUInstancePass : ScriptableRenderPass
     private Transform _groundTran;
     private MeshFilter _groundMF;
 
-    public void GenerateMipMaps(int width, int height)
-    {
-        // int level = 0;
-        // RenderTexture lastRT;
-        // RenderTexture tempRT;
-        // //小于8像素真的没用了吗？？
-        // while (height > 8)
-        // {
-        //     
-        // }
-
-        #region GenerateMipMapsExample
-        // int w = hzbDepth.width;
-        // int h = hzbDepth.height;
-        // int level = 0;
-        // RenderTexture lastRt = null;
-        // RenderTexture tempRT;
-        // while (h > 8)
-        // {
-        //     hzbMat.SetVector(ID_InvSize, new Vector4(1.0f / w, 1.0f / h, 0, 0));
-        //     tempRT = RenderTexture.GetTemporary(w, h, 0, hzbDepth.format);
-        //     tempRT.filterMode = FilterMode.Point;
-        //     if (lastRt == null)
-        //     {
-        //         Graphics.Blit(Shader.GetGlobalTexture("_CameraDepthTexture"), tempRT);
-        //     }
-        //     else
-        //     {
-        //         hzbMat.SetTexture(ID_DepthTexture, lastRt);
-        //         Graphics.Blit(null, tempRT, hzbMat);
-        //         RenderTexture.ReleaseTemporary(lastRt);
-        //     }
-        //     Graphics.CopyTexture(tempRT, 0, 0, hzbDepth, 0, level);
-        //     lastRt = tempRT;
-        //
-        //     w /= 2;
-        //     h /= 2;
-        //     level++;
-        // }
-        #endregion
-    }
-    
     public GPUInstancePass(GPUInstanceSetting gpuInstanceSetting)
     {
         _gpuInstanceSetting = gpuInstanceSetting;
@@ -96,7 +52,6 @@ class GPUInstancePass : ScriptableRenderPass
     }
     public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
     {
-        
     }
 
     public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
@@ -106,11 +61,13 @@ class GPUInstancePass : ScriptableRenderPass
         
         _cmd = CommandBufferPool.Get(cmdName);
         
+        //强制刷新computeBuffer
         if (_gpuInstanceSetting.rebuildCBuffer)
         {
             InstanceBuffer.Release();
             _gpuInstanceSetting.rebuildCBuffer = false;
         }
+        
         ComputeBuffer cb = InstanceBuffer.GetGrassBuffer(
             _groundMF,
             _gpuInstanceSetting.maxInstanceCount,
@@ -118,8 +75,7 @@ class GPUInstancePass : ScriptableRenderPass
         //将矩阵和Cbuffer(不是那个cbuffer，你懂得)，发送到GPU(就是Shader里)
         _materialBlock.SetMatrix(ShaderProperties.obj2World, _groundTran.localToWorldMatrix);
         _materialBlock.SetBuffer(ShaderProperties.grassInfos, cb);
-
-        Debug.LogWarning(InstanceBuffer.InstanceCount);
+        
         _cmd.DrawMeshInstancedProcedural(_gpuInstanceSetting.instanceMesh, 0, _material, 0, InstanceBuffer.InstanceCount, _materialBlock);
         
         context.ExecuteCommandBuffer(_cmd);
@@ -130,20 +86,6 @@ class GPUInstancePass : ScriptableRenderPass
     {
         //InstanceBuffer.Release();
     }
-    
-    // /// <summary>
-    // /// 记录materialblock(可以避免同材质不同属性时创建过多副本)
-    // /// ToDo：原理嘛。。。。不知道
-    // /// </summary>
-    // public MaterialPropertyBlock MaterialPropertyBlock{
-    //     get{
-    //         if(_materialBlock == null){
-    //             _materialBlock = new MaterialPropertyBlock();
-    //         }
-    //         return _materialBlock;
-    //     }
-    // }
-    
 }
 
 /// <summary>

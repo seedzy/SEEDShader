@@ -43,10 +43,11 @@ public class SEEDPostProcess : ScriptableRendererFeature
         }
     }
     
-   private SEEDPostProcessPass       PPPass             = null;
-   private ScreenSpaceShadowTexPass  SSShadow           = null;
-   private ScreenSpaceShadowPostPass SSShadowPost       = null;
-   private GPUInstancePass           GPUInstancePass    = null;
+   private SEEDPostProcessPass       PPPass                 = null;
+   private ScreenSpaceShadowTexPass  SSShadow               = null;
+   private ScreenSpaceShadowPostPass SSShadowPost           = null;
+   private GPUInstancePass           GPUInstancePass        = null;
+   private GenerateHiZBufferPass     GenerateHiZBufferPass  = null;
    
 
 
@@ -70,8 +71,12 @@ public class SEEDPostProcess : ScriptableRendererFeature
            GPUInstancePass = new GPUInstancePass(gpuInstanceSetting);
            //注意！！即便使用GPUInstance托管实例化，依然受到硬件Early-Z优化，当Instance数量过大是有较为明显优化，
            //因此把instance延迟到opaque之后，进行剔除
-           GPUInstancePass.renderPassEvent = RenderPassEvent.BeforeRenderingOpaques;
+           //TODO:失策了，是我在放屁。。。想多了，放什么时候都一样
+           GPUInstancePass.renderPassEvent = gpuInstanceSetting.renderPassEvent;
        }
+
+       GenerateHiZBufferPass = new GenerateHiZBufferPass();
+       GenerateHiZBufferPass.renderPassEvent = RenderPassEvent.AfterRenderingPrePasses;
        //PostProcessMainPass
        PPPass = new SEEDPostProcessPass();
        PPPass.renderPassEvent = RenderPassEvent.AfterRenderingTransparents;
@@ -95,10 +100,17 @@ public class SEEDPostProcess : ScriptableRendererFeature
                renderer.EnqueuePass(SSShadowPost);
            }
        }
+       
+       renderer.EnqueuePass(GenerateHiZBufferPass);
 
        if (gpuInstanceSetting.enable)
        {
            renderer.EnqueuePass(GPUInstancePass);
+       }
+       else
+       {
+           //ToDo：暂时不知道renderFeature的结束事件，先在这释放cbuffer
+           InstanceBuffer.Release();
        }
    }
        
