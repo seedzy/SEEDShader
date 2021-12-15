@@ -47,16 +47,18 @@ class GenerateHiZBufferPass : ScriptableRenderPass
     }
     public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
     {
+        ///dasdasdasdas
         CommandBuffer cmd = CommandBufferPool.Get("HiZBuffer");
         int mipMapSize = HZBSize;
         bool isFirstLevel = true;
         int level = 0;
         while (mipMapSize > 8)
         {
+            cmd.GetTemporaryRT(_tempRTHandle.id, mipMapSize, mipMapSize, 0, FilterMode.Point,
+                _hzbRTDescriptor.colorFormat);
+
             if (isFirstLevel)
             {
-                cmd.GetTemporaryRT(_tempRTHandle.id, mipMapSize, mipMapSize, 0, FilterMode.Point,
-                    _hzbRTDescriptor.colorFormat);
                 // 由管线生成的深度图，需要用作HZB MipMaps的第一级
                 cmd.Blit(_depthRTHandle.Identifier(), _tempRTHandle.Identifier());
                 isFirstLevel = false;
@@ -64,11 +66,17 @@ class GenerateHiZBufferPass : ScriptableRenderPass
             else
             {
                 cmd.Blit(_historyRTHandle.Identifier(), _tempRTHandle.Identifier(), _material);
+                //这里history需要用于保存上下一级的mipmap，所以这里在传递完上一级mipmap后需要释放并创建下级分辨率的rt
+                //如果是直接使用rendertexture类创建rt的话，直接传引用就好了，但是这样创建的rt没办法和cmd创建的rt混合使用，暂时只能先这样写了
+                cmd.ReleaseTemporaryRT(_historyRTHandle.id);
             }
 
             cmd.CopyTexture(_tempRTHandle.Identifier(), 0, 0, _hzbRTHandle.Identifier(), 0, level);
+            cmd.GetTemporaryRT(_historyRTHandle.id, mipMapSize, mipMapSize, 0, FilterMode.Point,
+                _hzbRTDescriptor.colorFormat);
             cmd.Blit(_tempRTHandle.Identifier(), _historyRTHandle.Identifier());
-
+            
+            cmd.ReleaseTemporaryRT(_tempRTHandle.id);
             mipMapSize /= 2;
             level++;
         }
