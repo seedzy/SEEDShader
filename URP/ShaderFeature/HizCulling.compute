@@ -1,0 +1,19 @@
+// Each #kernel tells which function to compile; you can have many kernels
+#pragma kernel CSHizCullingVersionOne
+
+// Create a RenderTexture with enableRandomWrite flag and set it
+// with cs.SetTexture
+StructuredBuffer<float3> allPosBuffer;
+RWStructuredBuffer<float3> visiblePosBuffer;
+RWStructuredBuffer<int> bufferWithArgs;
+float3 camPos;
+float3 camDir;
+float camHalfFov;
+float4x4 matrix_VP;
+Texture2D HizBuffer;
+
+[numthreads(16,16,1)]
+void CSHizCullingVersionOne (uint3 id : SV_DispatchThreadID)
+{
+    
+}
