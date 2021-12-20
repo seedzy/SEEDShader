@@ -75,6 +75,8 @@ namespace SEED.Rendering
         public int maxInstanceCount = 10000;
         [Header("实例化密度"),Range(1, 100)] 
         public int instanceDensity = 5;
+        [Header("HizCullingCS")] 
+        public ComputeShader computeShader;
         [Header("GPUInstance的执行时机(仅供调试，别乱改)")] 
         public RenderPassEvent renderPassEvent = RenderPassEvent.BeforeRenderingOpaques;
         [Button(ButtonSizes.Large),PropertySpace]
