@@ -15,5 +15,5 @@ Texture2D HizBuffer;
 [numthreads(16,16,1)]
 void CSHizCullingVersionOne (uint3 id : SV_DispatchThreadID)
 {
-    
+    //InterlockedAdd()
 }

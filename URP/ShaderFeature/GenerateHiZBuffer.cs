@@ -47,8 +47,11 @@ class GenerateHiZBufferPass : ScriptableRenderPass
     }
     public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
     {
-        ///dasdasdasdas
         CommandBuffer cmd = CommandBufferPool.Get("HiZBuffer");
+        
+        // using (new ProfilingScope(cmd, Profiling.internalStartRendering))
+        // {
+        
         int mipMapSize = HZBSize;
         bool isFirstLevel = true;
         int level = 0;
@@ -75,7 +78,8 @@ class GenerateHiZBufferPass : ScriptableRenderPass
             cmd.GetTemporaryRT(_historyRTHandle.id, mipMapSize, mipMapSize, 0, FilterMode.Point,
                 _hzbRTDescriptor.colorFormat);
             cmd.Blit(_tempRTHandle.Identifier(), _historyRTHandle.Identifier());
-            
+
+
             cmd.ReleaseTemporaryRT(_tempRTHandle.id);
             mipMapSize /= 2;
             level++;

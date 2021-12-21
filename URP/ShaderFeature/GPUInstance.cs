@@ -19,6 +19,7 @@ internal class ShaderProperties
 {
     internal static int obj2World = Shader.PropertyToID("_Obj2World");
     internal static int grassInfos = Shader.PropertyToID("_GrassInfos");
+    internal static string HizCSKernal = "CSHizCullingVersionOne";
     //public static int Grass
 }
 
@@ -31,6 +32,9 @@ class GPUInstancePass : ScriptableRenderPass
     private MaterialPropertyBlock _materialBlock;
     private Transform _groundTran;
     private MeshFilter _groundMF;
+
+    private ComputeBuffer _allPosBuffer;
+    private ComputeBuffer _visiblePosBuffer;
 
     public GPUInstancePass(GPUInstanceSetting gpuInstanceSetting)
     {
@@ -56,27 +60,66 @@ class GPUInstancePass : ScriptableRenderPass
 
     public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
     {
-        if(_groundTran == null || _gpuInstanceSetting.instanceMesh == null || _material == null)
+        if(_groundTran == null || _gpuInstanceSetting.instanceMesh == null || _material == null || _gpuInstanceSetting.computeShader == null)
             return;
         
         _cmd = CommandBufferPool.Get(cmdName);
-        
+
+        #region HizCullingFlow
+
         //强制刷新computeBuffer
         if (_gpuInstanceSetting.rebuildCBuffer)
         {
-            InstanceBuffer.Release();
+            Vector3[] allPosList = InstanceBuffer.GetGrassInstancePos(
+                _groundMF,
+                _gpuInstanceSetting.maxInstanceCount,
+                _gpuInstanceSetting.instanceDensity);
+
+            if (allPosList != null)
+            {
+                ComputeShader hizCS = _gpuInstanceSetting.computeShader;
+                int hizCSKernelIndex = hizCS.FindKernel(ShaderProperties.HizCSKernal);
+                
+                _allPosBuffer = new ComputeBuffer(_gpuInstanceSetting.maxInstanceCount, 4 * 3);
+                _allPosBuffer.SetData(allPosList);
+                
+                //TODO:直接创建没剔除大小的buffer合适吗？
+                _visiblePosBuffer = new ComputeBuffer(_gpuInstanceSetting.maxInstanceCount, 4 * 3);
+                
+                //发送数据到CS进行剔除操作
+                hizCS.SetBuffer(hizCSKernelIndex, "allPosBuffer", _allPosBuffer);
+                hizCS.SetBuffer(hizCSKernelIndex, "visiblePosBuffer", _visiblePosBuffer);
+            }
+            
+            
+            
             _gpuInstanceSetting.rebuildCBuffer = false;
         }
+
+        #endregion
+
+        #region directInstance
+
+        // //强制刷新computeBuffer
+        // if (_gpuInstanceSetting.rebuildCBuffer)
+        // {
+        //     InstanceBuffer.Release();
+        //     _gpuInstanceSetting.rebuildCBuffer = false;
+        // }
         
-        ComputeBuffer cb = InstanceBuffer.GetGrassBuffer(
-            _groundMF,
-            _gpuInstanceSetting.maxInstanceCount,
-            _gpuInstanceSetting.instanceDensity);
-        //将矩阵和Cbuffer(不是那个cbuffer，你懂得)，发送到GPU(就是Shader里)
-        _materialBlock.SetMatrix(ShaderProperties.obj2World, _groundTran.localToWorldMatrix);
-        _materialBlock.SetBuffer(ShaderProperties.grassInfos, cb);
+        // ComputeBuffer cb = InstanceBuffer.GetGrassBuffer(
+        //     _groundMF,
+        //     _gpuInstanceSetting.maxInstanceCount,
+        //     _gpuInstanceSetting.instanceDensity);
+        // //将矩阵和Cbuffer(不是那个cbuffer，你懂得)，发送到GPU(就是Shader里)
+        // _materialBlock.SetMatrix(ShaderProperties.obj2World, _groundTran.localToWorldMatrix);
+        // _materialBlock.SetBuffer(ShaderProperties.grassInfos, cb);
+        //
+        // _cmd.DrawMeshInstancedProcedural(_gpuInstanceSetting.instanceMesh, 0, _material, 0, InstanceBuffer.InstanceCount, _materialBlock);
+
+        #endregion
         
-        _cmd.DrawMeshInstancedProcedural(_gpuInstanceSetting.instanceMesh, 0, _material, 0, InstanceBuffer.InstanceCount, _materialBlock);
+        
         
         context.ExecuteCommandBuffer(_cmd);
         CommandBufferPool.Release(_cmd);
@@ -180,14 +223,14 @@ class InstanceBuffer
         }
         return grassBuffer;
     }
-    public static ComputeBuffer GetGrassBuffer(MeshFilter ground, int maxInstanceCount, int instanceDensity)
+    public static Vector3[] GetGrassInstancePos(MeshFilter ground, int maxInstanceCount, int instanceDensity)
     {
-        if (grassBuffer == null && ground != null)
+        if (ground != null)
         {
             //记录已经实例化的数量
             int count = 0;
             Mesh groundMesh = ground.sharedMesh;
-            List<GrassInfo> grassInfos = new List<GrassInfo>();
+            Vector3[] posList = new Vector3[maxInstanceCount];
             
             //triangles记录的是三角形各顶点在mesh顶点数组中的序号，并且是连续的012为第一个三角形。。。。。
             var triVerIndexs = groundMesh.triangles;
@@ -208,23 +251,13 @@ class InstanceBuffer
                 //计算当前三角内的实例化数量
                 float triArea = SEED.Math.GetAreaOfTriangle(v1, v2, v3);
                 float triInstanceCount = (int)Mathf.Max(1,triArea * instanceDensity);
-                //计算当前三角的面法线，使实例化对象能与生成平面垂直
-                Vector3 triFaceNormal = SEED.Math.GetFaceNormal(v1, v2, v3);
+
                 
                 for (int j = 0; j < triInstanceCount; j++)
                 {
                     Vector3 instancePos = SEED.Math.RandomPointInsideTriangle(v1, v2, v3);
-                    Vector4 transformTex = Vector4.one;
-                    //构建transformRotationScale矩阵
-                    Matrix4x4 transformMatrix = Matrix4x4.TRS(instancePos,
-                        Quaternion.FromToRotation(Vector3.up, triFaceNormal) * Quaternion.Euler(0, Random.Range(0, 180), 0), Vector3.one);
-                    
-                    GrassInfo grassInfo = new GrassInfo()
-                    {
-                        transformMatrix = transformMatrix,
-                        transformTex = transformTex
-                    };
-                    grassInfos.Add(grassInfo);
+
+                    posList[count] = instancePos;
                     count++;
                     if (count >= maxInstanceCount)
                         break;
@@ -233,13 +266,9 @@ class InstanceBuffer
                     break;
             }
 
-            if(grassInfos.Count >= 1)
-                Debug.LogWarning(grassInfos[0].transformMatrix);
-            instancedCount = count;
-            grassBuffer = new ComputeBuffer(instancedCount, 64 + 16);
-            grassBuffer.SetData(grassInfos);
+            return posList;
         }
-        return grassBuffer;
+        return null;
     }
 }
 
