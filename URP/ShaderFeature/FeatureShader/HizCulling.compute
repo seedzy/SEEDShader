@@ -5,7 +5,7 @@
 // with cs.SetTexture
 StructuredBuffer<float3> allPosBuffer;
 RWStructuredBuffer<float3> visiblePosBuffer;
-RWStructuredBuffer<int> bufferWithArgs;
+RWStructuredBuffer<int> interLockBuffer;
 float3 camPos;
 float3 camDir;
 float camHalfFov;

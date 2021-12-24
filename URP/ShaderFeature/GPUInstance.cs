@@ -35,6 +35,12 @@ class GPUInstancePass : ScriptableRenderPass
 
     private ComputeBuffer _allPosBuffer;
     private ComputeBuffer _visiblePosBuffer;
+    /// <summary>
+    /// 用于避免并行计算对同一数组元素的写操作
+    /// 也可以用appendStructBuffer处理，但据说用interlocked开销更低
+    /// </summary>
+    private ComputeBuffer _interLockBuffer;
+    private uint[] args;
 
     public GPUInstancePass(GPUInstanceSetting gpuInstanceSetting)
     {
@@ -64,6 +70,7 @@ class GPUInstancePass : ScriptableRenderPass
             return;
         
         _cmd = CommandBufferPool.Get(cmdName);
+        ComputeShader hizCS = _gpuInstanceSetting.computeShader;
 
         #region HizCullingFlow
 
@@ -77,7 +84,6 @@ class GPUInstancePass : ScriptableRenderPass
 
             if (allPosList != null)
             {
-                ComputeShader hizCS = _gpuInstanceSetting.computeShader;
                 int hizCSKernelIndex = hizCS.FindKernel(ShaderProperties.HizCSKernal);
                 
                 _allPosBuffer = new ComputeBuffer(_gpuInstanceSetting.maxInstanceCount, 4 * 3);
@@ -86,15 +92,24 @@ class GPUInstancePass : ScriptableRenderPass
                 //TODO:直接创建没剔除大小的buffer合适吗？
                 _visiblePosBuffer = new ComputeBuffer(_gpuInstanceSetting.maxInstanceCount, 4 * 3);
                 
+                //args = new uint[] { mesh.GetIndexCount(0), 0, 0, 0, 0 };
+                args = new uint[] { 1, 0, 0, 0, 0 };
+                //////////////////////////ComputeBufferType用于标识出特定用途的结构换缓冲区
+                //ComputeBufferType.IndirectArguments用于
+                //Graphics.DrawProceduralIndirect、ComputeShader.DispatchIndirect
+                //或 Graphics.DrawMeshInstancedIndirect 参数的 ComputeBuffer
+                _interLockBuffer = new ComputeBuffer(5, sizeof(uint), ComputeBufferType.IndirectArguments);
+                _interLockBuffer.SetData(args);
+
                 //发送数据到CS进行剔除操作
                 hizCS.SetBuffer(hizCSKernelIndex, "allPosBuffer", _allPosBuffer);
                 hizCS.SetBuffer(hizCSKernelIndex, "visiblePosBuffer", _visiblePosBuffer);
+                hizCS.SetBuffer(hizCSKernelIndex, "interLockBuffer", _interLockBuffer);
             }
-            
-            
-            
             _gpuInstanceSetting.rebuildCBuffer = false;
         }
+        
+        Culling(hizCS);
 
         #endregion
 
@@ -128,6 +143,15 @@ class GPUInstancePass : ScriptableRenderPass
     public override void OnCameraCleanup(CommandBuffer cmd)
     {
         //InstanceBuffer.Release();
+    }
+
+    public void Culling(ComputeShader cs)
+    {
+        //TODO:????????????
+        args[1] = 0;
+        _interLockBuffer.SetData(args);
+        //////////////////////////////
+        
     }
 }
 
@@ -231,7 +255,7 @@ class InstanceBuffer
             int count = 0;
             Mesh groundMesh = ground.sharedMesh;
             Vector3[] posList = new Vector3[maxInstanceCount];
-            
+
             //triangles记录的是三角形各顶点在mesh顶点数组中的序号，并且是连续的012为第一个三角形。。。。。
             var triVerIndexs = groundMesh.triangles;
             //获取mesh顶点数组
