@@ -71,10 +71,14 @@ namespace SEED.Rendering
         public Material material;
         [Header("需要实例化指定Mesh的平面")]
         public Transform groundTran = null;
-        [Header("最大实例化数量"),Range(1, 10000)]
-        public int maxInstanceCount = 10000;
+        [Header("最大实例化数量"),Range(1, 25600)]
+        public int maxInstanceCount = 25600;
         [Header("实例化密度"),Range(1, 100)] 
-        public int instanceDensity = 5;
+        public int instanceDensity = 8;
+        [Header("HizCullingOn")] 
+        public bool cullingOn = false;
+        [Header("SceneCameraHizCullingOn")]
+        public bool sceneCullingOn = false;
         [Header("HizCullingCS")] 
         public ComputeShader computeShader;
         [Header("GPUInstance的执行时机(仅供调试，别乱改)")] 

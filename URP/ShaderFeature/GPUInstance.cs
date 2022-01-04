@@ -35,6 +35,8 @@ class GPUInstancePass : ScriptableRenderPass
 
     private ComputeBuffer _allPosBuffer;
     private ComputeBuffer _visiblePosBuffer;
+    
+    private int hizCSKernelIndex;
     /// <summary>
     /// 用于避免并行计算对同一数组元素的写操作
     /// 也可以用appendStructBuffer处理，但据说用interlocked开销更低
@@ -59,6 +61,8 @@ class GPUInstancePass : ScriptableRenderPass
         }
         else
             _material = _gpuInstanceSetting.material;
+        if(_gpuInstanceSetting.computeShader != null)
+            hizCSKernelIndex = _gpuInstanceSetting.computeShader.FindKernel(ShaderProperties.HizCSKernal)
     }
     public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
     {
@@ -84,7 +88,7 @@ class GPUInstancePass : ScriptableRenderPass
 
             if (allPosList != null)
             {
-                int hizCSKernelIndex = hizCS.FindKernel(ShaderProperties.HizCSKernal);
+                
                 
                 _allPosBuffer = new ComputeBuffer(_gpuInstanceSetting.maxInstanceCount, 4 * 3);
                 _allPosBuffer.SetData(allPosList);
@@ -109,7 +113,8 @@ class GPUInstancePass : ScriptableRenderPass
             _gpuInstanceSetting.rebuildCBuffer = false;
         }
         
-        Culling(hizCS);
+        if(_gpuInstanceSetting.cullingOn)
+            Culling(hizCS, renderingData.cameraData);
 
         #endregion
 
@@ -145,13 +150,22 @@ class GPUInstancePass : ScriptableRenderPass
         //InstanceBuffer.Release();
     }
 
-    public void Culling(ComputeShader cs)
+    public void Culling(ComputeShader cs, CameraData camData)
     {
-        //TODO:????????????
+        //跳过scene摄像机剔除，方便调试
+        if(_gpuInstanceSetting.sceneCullingOn == false)
+            if(camData.cameraType == CameraType.SceneView)
+                return;
+        Camera cam = camData.camera;
+        
         args[1] = 0;
         _interLockBuffer.SetData(args);
-        //////////////////////////////
-        
+        cs.SetVector("camPos", cam.transform.position);
+        cs.SetVector("camDir", cam.transform.forward);
+        cs.SetFloat("camHalfFov", cam.fieldOfView / 2);
+        cs.SetMatrix("matrix_VP", camData.GetGPUProjectionMatrix() * cam.worldToCameraMatrix);
+        //这里设置线程组数量，160的平方是总的实例化数量， 16是CS里设置的单个线程组中的线程数量
+        cs.Dispatch(hizCSKernelIndex, 160 / 16, 160 / 16, 1);
     }
 }
 

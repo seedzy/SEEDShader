@@ -1,4 +1,4 @@
-Shader "SEEDzy/URP/URP_Temp/Unlit"
+Shader "SEEDzy/URP/URP_Template/Unlit"
 {
     Properties
     {

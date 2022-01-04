@@ -10,10 +10,11 @@ float3 camPos;
 float3 camDir;
 float camHalfFov;
 float4x4 matrix_VP;
-Texture2D HizBuffer;
+Texture2D _HiZBufferRT;
 
 [numthreads(16,16,1)]
 void CSHizCullingVersionOne (uint3 id : SV_DispatchThreadID)
 {
+    int grassIndex = 
     //InterlockedAdd()
 }

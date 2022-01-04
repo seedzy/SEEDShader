@@ -1,4 +1,4 @@
-Shader "SEEDzy/URP/URP_SimplePC/Lit"
+Shader "SEEDzy/URP/URP_Template/Lit"
 {
     Properties
     {

@@ -31,9 +31,9 @@ class GenerateHiZBufferPass : ScriptableRenderPass
     public GenerateHiZBufferPass()
     {
         _hzbRTDescriptor = GetHZBRTDescriptor();
-        _hzbRTHandle.Init("HiZBufferRT");
-        _tempRTHandle.Init("HZBPassTempRT");
-        _historyRTHandle.Init("HZBPassHistoryRT");
+        _hzbRTHandle.Init("_HiZBufferRT");
+        _tempRTHandle.Init("_HZBPassTempRT");
+        _historyRTHandle.Init("_HZBPassHistoryRT");
         _depthRTHandle.Init("_CameraDepthTexture");
         _material = CoreUtils.CreateEngineMaterial(ShaderPath.GenerateMipMaps);
     }
@@ -85,8 +85,7 @@ class GenerateHiZBufferPass : ScriptableRenderPass
             level++;
         }
 
-
-        //}
+        
         context.ExecuteCommandBuffer(cmd);
         CommandBufferPool.Release(cmd);
     }
