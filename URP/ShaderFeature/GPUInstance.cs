@@ -1,5 +1,6 @@
 using System.Collections.Generic;
 using SEED.Rendering;
+using TMPro;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
@@ -33,16 +34,17 @@ class GPUInstancePass : ScriptableRenderPass
     private Transform _groundTran;
     private MeshFilter _groundMF;
 
-    private ComputeBuffer _allPosBuffer;
-    private ComputeBuffer _visiblePosBuffer;
-    
-    private int hizCSKernelIndex;
+    private ComputeBuffer _allPosBuffer = null;
+    private ComputeBuffer _visiblePosBuffer = null;
     /// <summary>
     /// 用于避免并行计算对同一数组元素的写操作
     /// 也可以用appendStructBuffer处理，但据说用interlocked开销更低
     /// </summary>
-    private ComputeBuffer _interLockBuffer;
+    private ComputeBuffer _interLockBuffer = null;
     private uint[] args;
+    
+    private int hizCSKernelIndex;
+    
 
     public GPUInstancePass(GPUInstanceSetting gpuInstanceSetting)
     {
@@ -61,8 +63,9 @@ class GPUInstancePass : ScriptableRenderPass
         }
         else
             _material = _gpuInstanceSetting.material;
-        if(_gpuInstanceSetting.computeShader != null)
-            hizCSKernelIndex = _gpuInstanceSetting.computeShader.FindKernel(ShaderProperties.HizCSKernal)
+
+        if (_gpuInstanceSetting.computeShader != null)
+            hizCSKernelIndex = _gpuInstanceSetting.computeShader.FindKernel(ShaderProperties.HizCSKernal);
     }
     public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
     {
@@ -81,40 +84,23 @@ class GPUInstancePass : ScriptableRenderPass
         //强制刷新computeBuffer
         if (_gpuInstanceSetting.rebuildCBuffer)
         {
-            Vector3[] allPosList = InstanceBuffer.GetGrassInstancePos(
-                _groundMF,
-                _gpuInstanceSetting.maxInstanceCount,
-                _gpuInstanceSetting.instanceDensity);
-
-            if (allPosList != null)
-            {
-                
-                
-                _allPosBuffer = new ComputeBuffer(_gpuInstanceSetting.maxInstanceCount, 4 * 3);
-                _allPosBuffer.SetData(allPosList);
-                
-                //TODO:直接创建没剔除大小的buffer合适吗？
-                _visiblePosBuffer = new ComputeBuffer(_gpuInstanceSetting.maxInstanceCount, 4 * 3);
-                
-                //args = new uint[] { mesh.GetIndexCount(0), 0, 0, 0, 0 };
-                args = new uint[] { 1, 0, 0, 0, 0 };
-                //////////////////////////ComputeBufferType用于标识出特定用途的结构换缓冲区
-                //ComputeBufferType.IndirectArguments用于
-                //Graphics.DrawProceduralIndirect、ComputeShader.DispatchIndirect
-                //或 Graphics.DrawMeshInstancedIndirect 参数的 ComputeBuffer
-                _interLockBuffer = new ComputeBuffer(5, sizeof(uint), ComputeBufferType.IndirectArguments);
-                _interLockBuffer.SetData(args);
-
-                //发送数据到CS进行剔除操作
-                hizCS.SetBuffer(hizCSKernelIndex, "allPosBuffer", _allPosBuffer);
-                hizCS.SetBuffer(hizCSKernelIndex, "visiblePosBuffer", _visiblePosBuffer);
-                hizCS.SetBuffer(hizCSKernelIndex, "interLockBuffer", _interLockBuffer);
-            }
+            ReleaseCullingBuffer();
             _gpuInstanceSetting.rebuildCBuffer = false;
         }
         
+        GenerateCullingPosBuffer(hizCS);
+        
         if(_gpuInstanceSetting.cullingOn)
             Culling(hizCS, renderingData.cameraData);
+        
+        _cmd.DrawMeshInstancedIndirect(
+            _gpuInstanceSetting.instanceMesh, 
+            0, 
+            _material, 
+            0, 
+            _interLockBuffer, 
+            0, 
+            _materialBlock);
 
         #endregion
 
@@ -150,22 +136,94 @@ class GPUInstancePass : ScriptableRenderPass
         //InstanceBuffer.Release();
     }
 
+    /// <summary>
+    /// 生成CullingCS所需要的Instance position数据
+    /// </summary>
+    /// <param name="cs"></param>
+    public void GenerateCullingPosBuffer(ComputeShader cs)
+    {
+        if(_allPosBuffer == null && _visiblePosBuffer == null && _interLockBuffer == null)
+        {
+            Vector3[] allPosList = InstanceBuffer.GetGrassInstancePos(
+                _groundMF,
+                _gpuInstanceSetting.maxInstanceCount,
+                _gpuInstanceSetting.instanceDensity);
+
+            if (allPosList != null)
+            {
+
+
+                _allPosBuffer = new ComputeBuffer(_gpuInstanceSetting.maxInstanceCount, 4 * 3);
+                _allPosBuffer.SetData(allPosList);
+
+                //TODO:直接创建没剔除大小的buffer合适吗？
+                _visiblePosBuffer = new ComputeBuffer(_gpuInstanceSetting.maxInstanceCount, 4 * 3);
+
+                //args = new uint[] { mesh.GetIndexCount(0), 0, 0, 0, 0 };
+                args = new uint[] {1, 0, 0, 0, 0};
+                //////////////////////////ComputeBufferType用于标识出特定用途的结构换缓冲区
+                //ComputeBufferType.IndirectArguments用于
+                //Graphics.DrawProceduralIndirect、ComputeShader.DispatchIndirect
+                //或 Graphics.DrawMeshInstancedIndirect 参数的 ComputeBuffer
+                _interLockBuffer = new ComputeBuffer(5, sizeof(uint), ComputeBufferType.IndirectArguments);
+                _interLockBuffer.SetData(args);
+
+                //发送数据到CS进行剔除操作
+                cs.SetBuffer(hizCSKernelIndex, "allPosBuffer", _allPosBuffer);
+                cs.SetBuffer(hizCSKernelIndex, "visiblePosBuffer", _visiblePosBuffer);
+                cs.SetBuffer(hizCSKernelIndex, "interLockBuffer", _interLockBuffer);
+                
+                _materialBlock.SetMatrix(ShaderProperties.obj2World, _groundTran.localToWorldMatrix);
+                _materialBlock.SetBuffer(ShaderProperties.grassInfos, _visiblePosBuffer);
+            }
+        }
+    }
+    
     public void Culling(ComputeShader cs, CameraData camData)
     {
-        //跳过scene摄像机剔除，方便调试
-        if(_gpuInstanceSetting.sceneCullingOn == false)
-            if(camData.cameraType == CameraType.SceneView)
-                return;
-        Camera cam = camData.camera;
-        
         args[1] = 0;
         _interLockBuffer.SetData(args);
+
+        Camera cam;
+        //跳过scene摄像机剔除，方便调试
+        if (_gpuInstanceSetting.sceneCullingOn)
+        {
+            cam = camData.camera;
+            cs.SetMatrix("matrix_VP", camData.GetGPUProjectionMatrix() * cam.worldToCameraMatrix);
+        }
+        else
+        {
+            cam = Camera.main;
+            cs.SetMatrix("matrix_VP", GL.GetGPUProjectionMatrix(cam.projectionMatrix, false));
+        }
+
         cs.SetVector("camPos", cam.transform.position);
         cs.SetVector("camDir", cam.transform.forward);
         cs.SetFloat("camHalfFov", cam.fieldOfView / 2);
-        cs.SetMatrix("matrix_VP", camData.GetGPUProjectionMatrix() * cam.worldToCameraMatrix);
+        
         //这里设置线程组数量，160的平方是总的实例化数量， 16是CS里设置的单个线程组中的线程数量
         cs.Dispatch(hizCSKernelIndex, 160 / 16, 160 / 16, 1);
+    }
+
+    public void ReleaseCullingBuffer()
+    {
+        if (_allPosBuffer != null)
+        {
+            _allPosBuffer.Release();
+            _allPosBuffer = null;
+        }
+
+        if (_visiblePosBuffer != null)
+        {
+            _visiblePosBuffer.Release();
+            _visiblePosBuffer = null;
+        }
+
+        if (_interLockBuffer != null)
+        {
+            _interLockBuffer.Release();
+            _interLockBuffer = null;
+        }
     }
 }
 
@@ -238,7 +296,6 @@ class InstanceBuffer
                     //构建transformRotationScale矩阵
                     Matrix4x4 transformMatrix = Matrix4x4.TRS(instancePos,
                         Quaternion.FromToRotation(Vector3.up, triFaceNormal) * Quaternion.Euler(0, Random.Range(0, 180), 0), Vector3.one);
-                    
                     GrassInfo grassInfo = new GrassInfo()
                     {
                         transformMatrix = transformMatrix,

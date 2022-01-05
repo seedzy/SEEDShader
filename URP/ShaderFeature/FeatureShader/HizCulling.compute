@@ -3,8 +3,15 @@
 
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
-StructuredBuffer<float3> allPosBuffer;
-RWStructuredBuffer<float3> visiblePosBuffer;
+struct InstanceInfo
+{
+    //控制绘制的位置信息
+    float4x4 transformMatrix;
+    //控制纹理采样偏移信息
+    float4   transformTex;
+};
+StructuredBuffer<InstanceInfo> allPosBuffer;
+RWStructuredBuffer<InstanceInfo> visiblePosBuffer;
 RWStructuredBuffer<int> interLockBuffer;
 float3 camPos;
 float3 camDir;

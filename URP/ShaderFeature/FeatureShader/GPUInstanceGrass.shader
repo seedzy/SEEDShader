@@ -30,7 +30,7 @@ Shader "SEEDzy/URP/GPUInstance/Grass"
             #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
             #include  "Assets/Shader/SEEDShader/URP/Lighting.hlsl"
 
-            struct GrassInfo
+            struct InstanceInfo
             {
                 //控制绘制的位置信息
                 float4x4 transformMatrix;
@@ -43,7 +43,7 @@ Shader "SEEDzy/URP/GPUInstance/Grass"
             float4x4 _Obj2World;
             half4 _Color;
             //computeBuffer
-            StructuredBuffer<GrassInfo> _GrassInfos;
+            StructuredBuffer<InstanceInfo> _GrassInfos;
             CBUFFER_END
 
             TEXTURE2D(_MainTex);        SAMPLER(sampler_MainTex);
@@ -68,7 +68,7 @@ Shader "SEEDzy/URP/GPUInstance/Grass"
             {
                 v2f o;
                 //根据ID获取对应实例化对象的GrassInfo
-                GrassInfo grassInfo = _GrassInfos[i.instanceID];
+                InstanceInfo grassInfo = _GrassInfos[i.instanceID];
                 
                 float3 positionOS = mul(grassInfo.transformMatrix, i.positionOS);
                 half3  normalOS   = mul(grassInfo.transformMatrix, float4(i.normalOS, 0));
