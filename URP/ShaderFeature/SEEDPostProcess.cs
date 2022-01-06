@@ -113,7 +113,11 @@ public class SEEDPostProcess : ScriptableRendererFeature
            InstanceBuffer.Release();
        }
    }
-       
+
+   void OnDisable()
+   {
+       throw new NotImplementedException();
+   }
 }
 
 

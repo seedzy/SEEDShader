@@ -5,17 +5,6 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
 
-/// <summary>
-/// 用于存储每一个instanceID对应的网格的绘制数据
-/// </summary>
-public struct GrassInfo
-{
-    //4行4列，共16个float，共64byte
-    public Matrix4x4 transformMatrix;
-    //4个float，共16byte
-    public Vector4 transformTex;
-}
-
 internal class ShaderProperties
 {
     internal static int obj2World = Shader.PropertyToID("_Obj2World");
@@ -34,8 +23,8 @@ class GPUInstancePass : ScriptableRenderPass
     private Transform _groundTran;
     private MeshFilter _groundMF;
 
-    private ComputeBuffer _allPosBuffer = null;
-    private ComputeBuffer _visiblePosBuffer = null;
+    private ComputeBuffer _allPosMatrixBuffer = null;
+    private ComputeBuffer _visiblePosMatrixBuffer = null;
     /// <summary>
     /// 用于避免并行计算对同一数组元素的写操作
     /// 也可以用appendStructBuffer处理，但据说用interlocked开销更低
@@ -87,7 +76,7 @@ class GPUInstancePass : ScriptableRenderPass
             ReleaseCullingBuffer();
             _gpuInstanceSetting.rebuildCBuffer = false;
         }
-        
+        //ToDo:改成不再引用CS改由CMD托管
         GenerateCullingPosBuffer(hizCS);
         
         if(_gpuInstanceSetting.cullingOn)
@@ -142,22 +131,20 @@ class GPUInstancePass : ScriptableRenderPass
     /// <param name="cs"></param>
     public void GenerateCullingPosBuffer(ComputeShader cs)
     {
-        if(_allPosBuffer == null && _visiblePosBuffer == null && _interLockBuffer == null)
+        if(_allPosMatrixBuffer == null && _visiblePosMatrixBuffer == null && _interLockBuffer == null)
         {
-            Vector3[] allPosList = InstanceBuffer.GetGrassInstancePos(
+            List<Matrix4x4> allPosList = GetInstanceTransformMatrix(
                 _groundMF,
                 _gpuInstanceSetting.maxInstanceCount,
                 _gpuInstanceSetting.instanceDensity);
 
             if (allPosList != null)
             {
-
-
-                _allPosBuffer = new ComputeBuffer(_gpuInstanceSetting.maxInstanceCount, 4 * 3);
-                _allPosBuffer.SetData(allPosList);
+                _allPosMatrixBuffer = new ComputeBuffer(_gpuInstanceSetting.maxInstanceCount, 16 * 4);
+                _allPosMatrixBuffer.SetData(allPosList);
 
                 //TODO:直接创建没剔除大小的buffer合适吗？
-                _visiblePosBuffer = new ComputeBuffer(_gpuInstanceSetting.maxInstanceCount, 4 * 3);
+                _visiblePosMatrixBuffer = new ComputeBuffer(_gpuInstanceSetting.maxInstanceCount, 16 * 4);
 
                 //args = new uint[] { mesh.GetIndexCount(0), 0, 0, 0, 0 };
                 args = new uint[] {1, 0, 0, 0, 0};
@@ -169,14 +156,73 @@ class GPUInstancePass : ScriptableRenderPass
                 _interLockBuffer.SetData(args);
 
                 //发送数据到CS进行剔除操作
-                cs.SetBuffer(hizCSKernelIndex, "allPosBuffer", _allPosBuffer);
-                cs.SetBuffer(hizCSKernelIndex, "visiblePosBuffer", _visiblePosBuffer);
+                cs.SetBuffer(hizCSKernelIndex, "allPosBuffer", _allPosMatrixBuffer);
+                cs.SetBuffer(hizCSKernelIndex, "visiblePosBuffer", _visiblePosMatrixBuffer);
                 cs.SetBuffer(hizCSKernelIndex, "interLockBuffer", _interLockBuffer);
                 
                 _materialBlock.SetMatrix(ShaderProperties.obj2World, _groundTran.localToWorldMatrix);
-                _materialBlock.SetBuffer(ShaderProperties.grassInfos, _visiblePosBuffer);
+                //_materialBlock.SetBuffer(ShaderProperties.grassInfos, _visiblePosMatrixBuffer);
             }
         }
+    }
+    
+    /// <summary>
+    /// 获得Instance对象的obj2World矩阵
+    /// </summary>
+    /// <param name="ground"></param>
+    /// <param name="maxInstanceCount"></param>
+    /// <param name="instanceDensity"></param>
+    /// <returns></returns>
+    public List<Matrix4x4> GetInstanceTransformMatrix(MeshFilter ground, int maxInstanceCount, int instanceDensity)
+    {
+        List<Matrix4x4> allPosMatrix = null;
+        if (ground != null)
+        {
+            //记录已经实例化的数量
+            int count = 0;
+            Mesh groundMesh = ground.sharedMesh;
+            allPosMatrix = new List<Matrix4x4>();
+            
+            //triangles记录的是三角形各顶点在mesh顶点数组中的序号，并且是连续的012为第一个三角形。。。。。
+            var triVerIndexs = groundMesh.triangles;
+            //获取mesh顶点数组
+            var vertices = groundMesh.vertices;
+            
+            for (int i = 0; i < triVerIndexs.Length / 3; i++)
+            {
+                #region 收集三角形三个顶点的位置信息(可用于计算三角形表面法线等等,向量叉乘难道不会吗)
+                var index1 = triVerIndexs[i * 3];
+                var index2 = triVerIndexs[i * 3 + 1];
+                var index3 = triVerIndexs[i * 3 + 2];
+                var v1 = vertices[index1];
+                var v2 = vertices[index2];
+                var v3 = vertices[index3];
+                #endregion
+
+                //计算当前三角内的实例化数量
+                float triArea = SEED.Math.GetAreaOfTriangle(v1, v2, v3);
+                float triInstanceCount = (int)Mathf.Max(1,triArea * instanceDensity);
+                //计算当前三角的面法线，使实例化对象能与生成平面垂直
+                Vector3 triFaceNormal = SEED.Math.GetFaceNormal(v1, v2, v3);
+                
+                for (int j = 0; j < triInstanceCount; j++)
+                {
+                    Vector3 instancePos = SEED.Math.RandomPointInsideTriangle(v1, v2, v3);
+                    //构建transformRotationScale矩阵
+                    Matrix4x4 transformMatrix = Matrix4x4.TRS(instancePos,
+                        Quaternion.FromToRotation(Vector3.up, triFaceNormal) * Quaternion.Euler(0, Random.Range(0, 180), 0), Vector3.one);
+                    
+                    allPosMatrix.Add(transformMatrix);
+                    
+                    count++;
+                    if (count >= maxInstanceCount)
+                        break;
+                }
+                if (count >= maxInstanceCount)
+                    break;
+            }
+        }
+        return allPosMatrix;
     }
     
     public void Culling(ComputeShader cs, CameraData camData)
@@ -194,7 +240,7 @@ class GPUInstancePass : ScriptableRenderPass
         else
         {
             cam = Camera.main;
-            cs.SetMatrix("matrix_VP", GL.GetGPUProjectionMatrix(cam.projectionMatrix, false));
+            cs.SetMatrix("matrix_VP", GL.GetGPUProjectionMatrix(cam.projectionMatrix, false) * cam.worldToCameraMatrix);
         }
 
         cs.SetVector("camPos", cam.transform.position);
@@ -207,16 +253,16 @@ class GPUInstancePass : ScriptableRenderPass
 
     public void ReleaseCullingBuffer()
     {
-        if (_allPosBuffer != null)
+        if (_allPosMatrixBuffer != null)
         {
-            _allPosBuffer.Release();
-            _allPosBuffer = null;
+            _allPosMatrixBuffer.Release();
+            _allPosMatrixBuffer = null;
         }
 
-        if (_visiblePosBuffer != null)
+        if (_visiblePosMatrixBuffer != null)
         {
-            _visiblePosBuffer.Release();
-            _visiblePosBuffer = null;
+            _visiblePosMatrixBuffer.Release();
+            _visiblePosMatrixBuffer = null;
         }
 
         if (_interLockBuffer != null)
@@ -225,9 +271,11 @@ class GPUInstancePass : ScriptableRenderPass
             _interLockBuffer = null;
         }
     }
+    
 }
 
 /// <summary>
+/// TODO：将会弃用
 /// 记录所有实例化对象类型的ComputeBuffer
 /// </summary>
 class InstanceBuffer
@@ -258,113 +306,7 @@ class InstanceBuffer
         }
     }
 
-    public static ComputeBuffer GetGrassBuffer2(MeshFilter ground, int maxInstanceCount, int instanceDensity)
-    {
-        if (grassBuffer == null && ground != null)
-        {
-            //记录已经实例化的数量
-            int count = 0;
-            Mesh groundMesh = ground.sharedMesh;
-            List<GrassInfo> grassInfos = new List<GrassInfo>();
-            
-            //triangles记录的是三角形各顶点在mesh顶点数组中的序号，并且是连续的012为第一个三角形。。。。。
-            var triVerIndexs = groundMesh.triangles;
-            //获取mesh顶点数组
-            var vertices = groundMesh.vertices;
-            
-            for (int i = 0; i < triVerIndexs.Length / 3; i++)
-            {
-                #region 收集三角形三个顶点的位置信息(可用于计算三角形表面法线等等,向量叉乘难道不会吗)
-                var index1 = triVerIndexs[i * 3];
-                var index2 = triVerIndexs[i * 3 + 1];
-                var index3 = triVerIndexs[i * 3 + 2];
-                var v1 = vertices[index1];
-                var v2 = vertices[index2];
-                var v3 = vertices[index3];
-                #endregion
-
-                //计算当前三角内的实例化数量
-                float triArea = SEED.Math.GetAreaOfTriangle(v1, v2, v3);
-                float triInstanceCount = (int)Mathf.Max(1,triArea * instanceDensity);
-                //计算当前三角的面法线，使实例化对象能与生成平面垂直
-                Vector3 triFaceNormal = SEED.Math.GetFaceNormal(v1, v2, v3);
-                
-                for (int j = 0; j < triInstanceCount; j++)
-                {
-                    Vector3 instancePos = SEED.Math.RandomPointInsideTriangle(v1, v2, v3);
-                    Vector4 transformTex = Vector4.one;
-                    //构建transformRotationScale矩阵
-                    Matrix4x4 transformMatrix = Matrix4x4.TRS(instancePos,
-                        Quaternion.FromToRotation(Vector3.up, triFaceNormal) * Quaternion.Euler(0, Random.Range(0, 180), 0), Vector3.one);
-                    GrassInfo grassInfo = new GrassInfo()
-                    {
-                        transformMatrix = transformMatrix,
-                        transformTex = transformTex
-                    };
-                    grassInfos.Add(grassInfo);
-                    count++;
-                    if (count >= maxInstanceCount)
-                        break;
-                }
-                if (count >= maxInstanceCount)
-                    break;
-            }
-
-            if(grassInfos.Count >= 1)
-                Debug.LogWarning(grassInfos[0].transformMatrix);
-            instancedCount = count;
-            grassBuffer = new ComputeBuffer(instancedCount, 64 + 16);
-            grassBuffer.SetData(grassInfos);
-        }
-        return grassBuffer;
-    }
-    public static Vector3[] GetGrassInstancePos(MeshFilter ground, int maxInstanceCount, int instanceDensity)
-    {
-        if (ground != null)
-        {
-            //记录已经实例化的数量
-            int count = 0;
-            Mesh groundMesh = ground.sharedMesh;
-            Vector3[] posList = new Vector3[maxInstanceCount];
-
-            //triangles记录的是三角形各顶点在mesh顶点数组中的序号，并且是连续的012为第一个三角形。。。。。
-            var triVerIndexs = groundMesh.triangles;
-            //获取mesh顶点数组
-            var vertices = groundMesh.vertices;
-            
-            for (int i = 0; i < triVerIndexs.Length / 3; i++)
-            {
-                #region 收集三角形三个顶点的位置信息(可用于计算三角形表面法线等等,向量叉乘难道不会吗)
-                var index1 = triVerIndexs[i * 3];
-                var index2 = triVerIndexs[i * 3 + 1];
-                var index3 = triVerIndexs[i * 3 + 2];
-                var v1 = vertices[index1];
-                var v2 = vertices[index2];
-                var v3 = vertices[index3];
-                #endregion
-
-                //计算当前三角内的实例化数量
-                float triArea = SEED.Math.GetAreaOfTriangle(v1, v2, v3);
-                float triInstanceCount = (int)Mathf.Max(1,triArea * instanceDensity);
-
-                
-                for (int j = 0; j < triInstanceCount; j++)
-                {
-                    Vector3 instancePos = SEED.Math.RandomPointInsideTriangle(v1, v2, v3);
-
-                    posList[count] = instancePos;
-                    count++;
-                    if (count >= maxInstanceCount)
-                        break;
-                }
-                if (count >= maxInstanceCount)
-                    break;
-            }
-
-            return posList;
-        }
-        return null;
-    }
+    
 }
 
 

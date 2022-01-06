@@ -3,15 +3,9 @@
 
 // Create a RenderTexture with enableRandomWrite flag and set it
 // with cs.SetTexture
-struct InstanceInfo
-{
-    //控制绘制的位置信息
-    float4x4 transformMatrix;
-    //控制纹理采样偏移信息
-    float4   transformTex;
-};
-StructuredBuffer<InstanceInfo> allPosBuffer;
-RWStructuredBuffer<InstanceInfo> visiblePosBuffer;
+
+StructuredBuffer<float4x4> allPosMatrixBuffer;
+RWStructuredBuffer<float4x4> visiblePosMatrixBuffer;
 RWStructuredBuffer<int> interLockBuffer;
 float3 camPos;
 float3 camDir;
@@ -19,9 +13,80 @@ float camHalfFov;
 float4x4 matrix_VP;
 Texture2D _HiZBufferRT;
 
+static float3 boundMin = float3(-0.6f, 0.0f, -0.6f);//包围盒最小点
+static float3 boundMax = float3(0.6f, 0.5f, 0.6f);  //包围盒最大点
+
+//在Clip Space下，根据齐次坐标做Clipping操作
+bool IsInClipSpace(float4 clipSpacePosition)
+{
+    //opgl和dxNDC不一样，要分开处理
+    // if (isOpenGL)
+    //     return clipSpacePosition.x > -clipSpacePosition.w && clipSpacePosition.x < clipSpacePosition.w&&
+    //     clipSpacePosition.y > -clipSpacePosition.w && clipSpacePosition.y < clipSpacePosition.w&&
+    //     clipSpacePosition.z > -clipSpacePosition.w && clipSpacePosition.z < clipSpacePosition.w;
+    // else
+    return clipSpacePosition.x > -clipSpacePosition.w && clipSpacePosition.x < clipSpacePosition.w&&
+    clipSpacePosition.y > -clipSpacePosition.w && clipSpacePosition.y < clipSpacePosition.w&&
+    clipSpacePosition.z > 0 && clipSpacePosition.z < clipSpacePosition.w;
+}
+
 [numthreads(16,16,1)]
 void CSHizCullingVersionOne (uint3 id : SV_DispatchThreadID)
 {
-    int grassIndex = 
+    //这里总共有10 * 10个线程组，每个线程组有16 * 16个线程，那么总计有160 *160个线程，然后正好这里id是
+    //线程在10 * 10个线程组里的坐标(可以想象,10*10的线程组组合起来就是160*160这样一个大的二维线程数组，
+    //id.xy分别是行号和列号),详细看笔记
+    int index = 16 * 10 * id.x + id.y;
+    float4x4 obj2World = allPosMatrixBuffer[index];
+    float4x4 matrix_MVP = mul(matrix_VP, obj2World);
+
+    //包围盒的8个顶点的View Space坐标
+    float4 boundVerts[8];
+    boundVerts[0] = float4(boundMin, 1);
+    boundVerts[1] = float4(boundMax, 1);
+    boundVerts[2] = float4(boundMax.x, boundMax.y, boundMin.z, 1);
+    boundVerts[3] = float4(boundMax.x, boundMin.y, boundMax.z, 1);
+    boundVerts[4] = float4(boundMax.x, boundMin.y, boundMin.z, 1);
+    boundVerts[5] = float4(boundMin.x, boundMax.y, boundMax.z, 1);
+    boundVerts[6] = float4(boundMin.x, boundMax.y, boundMin.z, 1);
+    boundVerts[7] = float4(boundMin.x, boundMin.y, boundMax.z, 1);
+
+    bool allVertOutSideClipSpace = true;
+    //减少计算量
+    float4 positionCS[8];
+    for(int i = 0; i< 8; i++)
+    {
+        positionCS[i] = mul(matrix_MVP, boundVerts[i]);
+        if(allVertOutSideClipSpace && IsInClipSpace(positionCS[i]))
+            allVertOutSideClipSpace = false;
+    }
+    
+    if(allVertOutSideClipSpace)
+        return;
+
+    //ndc下包围盒变形不再轴对称，此处重建ndc下aabb包围盒
+    float3 positionNDC = positionCS[0].xyz / positionCS[0].w;
+    float3 ndcBoundMin = positionNDC;
+    float3 ndcBoundMax = positionNDC;
+    for(int i = 0; i< 7; i++)
+    {
+        float3 positionNDC = positionCS[i].xyz / positionCS[i].w;
+        ndcBoundMin.x = min(positionNDC.x, ndcBoundMin.x); 
+        ndcBoundMin.y = min(positionNDC.y, ndcBoundMin.y); 
+        //ndcBoundMin.z = min(positionNDC.z, ndcBoundMin.z); 
+        ndcBoundMax.x = max(positionNDC.x, ndcBoundMax.x); 
+        ndcBoundMax.y = max(positionNDC.y, ndcBoundMax.y); 
+        ndcBoundMax.z = max(positionNDC.z, ndcBoundMax.z); 
+    }
+
+    //ToDo:OpenGL记得转Z值
+    //ndc包围盒xy值转到屏幕空间下，这里现在pc下弄，所以z值没转
+    float2 ssBoundmMin = ndcBoundMin.xy * 0.5 + 0.5;
+    float2 ssBoundmMax = ndcBoundMax.xy * 0.5 + 0.5;
+
+    //0~7对应现在的mipmap层级， 1024是现在HizBuffer的大小
+    uint mips = ( uint)clamp(log2(max(ssBoundmMax.x - ssBoundmMin.x, ssBoundmMax.y - ssBoundmMin.y) * 1024),0,7);
+
+    
     //InterlockedAdd()
 }
