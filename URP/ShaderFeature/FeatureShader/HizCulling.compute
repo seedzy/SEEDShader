@@ -80,12 +80,23 @@ void CSHizCullingVersionOne (uint3 id : SV_DispatchThreadID)
     }
 
     //ToDo:OpenGL记得转Z值
-    //ndc包围盒xy值转到屏幕空间下，这里现在pc下弄，所以z值没转
+    //ndc包围盒xy值转到屏幕空间下(没乘屏幕尺寸的屏幕空间)，这里现在pc下弄，所以z值没转
     float2 ssBoundmMin = ndcBoundMin.xy * 0.5 + 0.5;
     float2 ssBoundmMax = ndcBoundMax.xy * 0.5 + 0.5;
 
     //0~7对应现在的mipmap层级， 1024是现在HizBuffer的大小
     uint mips = ( uint)clamp(log2(max(ssBoundmMax.x - ssBoundmMin.x, ssBoundmMax.y - ssBoundmMin.y) * 1024),0,7);
+    //计算对应mipmap层级下纹素的缩放比(以第一级1024为的图的单个纹素为准，那么512的单个纹素大小就是原来的2倍(宽度，不是面积))
+    uint texelScale = 1 << mips;
+    //拿到该包围盒对应到mipmap上的UV坐标
+    uint2 coordinate = uint2(ssBoundmMin.xy * (1024 / texelScale));
+    //获得对应层级uv的mipmap深度
+    float minDepth =
+        min(
+            min(_HiZBufferRT.mips[mips][coordinate.xy + uint2(0, 0)].r, _HiZBufferRT.mips[mips][coordinate.xy + uint2(0, 1)].r), 
+            min(_HiZBufferRT.mips[mips][coordinate.xy + uint2(1, 0)].r, _HiZBufferRT.mips[mips][coordinate.xy + uint2(1, 1)].r)
+            );
+    if(minDepth > ndcBoundMax.z) return;
 
     
     //InterlockedAdd()
