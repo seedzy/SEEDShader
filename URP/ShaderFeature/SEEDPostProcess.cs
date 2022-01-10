@@ -109,14 +109,26 @@ public class SEEDPostProcess : ScriptableRendererFeature
        }
        else
        {
-           //ToDo：暂时不知道renderFeature的结束事件，先在这释放cbuffer
-           InstanceBuffer.Release();
+           //ToDo：暂时不知道单个renderFeature的结束事件，先在这释放cbuffer
+           //InstanceBuffer.Release();
+           GPUInstancePass?.ReleaseCullingBuffer();
        }
    }
 
-   void OnDisable()
+   protected override void Dispose(bool disposing)
    {
-       throw new NotImplementedException();
+       base.Dispose(disposing);
+       GPUInstancePass?.ReleaseCullingBuffer();
+   }
+
+   private void OnDestroy()
+   {
+       GPUInstancePass?.ReleaseCullingBuffer();
+   }
+
+   private void OnDisable()
+   {
+       GPUInstancePass?.ReleaseCullingBuffer();
    }
 }
 

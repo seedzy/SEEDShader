@@ -15,6 +15,8 @@ internal class ShaderProperties
 
 class GPUInstancePass : ScriptableRenderPass
 {
+    private RenderTargetHandle _hiZBufferRT;
+    
     private const string cmdName = "GPUInstance";
     private CommandBuffer _cmd;
     private GPUInstanceSetting _gpuInstanceSetting;
@@ -37,6 +39,7 @@ class GPUInstancePass : ScriptableRenderPass
 
     public GPUInstancePass(GPUInstanceSetting gpuInstanceSetting)
     {
+        _hiZBufferRT.Init("_HiZBufferRT");
         _gpuInstanceSetting = gpuInstanceSetting;
         _materialBlock = new MaterialPropertyBlock();
         
@@ -77,19 +80,20 @@ class GPUInstancePass : ScriptableRenderPass
             _gpuInstanceSetting.rebuildCBuffer = false;
         }
         //ToDo:改成不再引用CS改由CMD托管
-        GenerateCullingPosBuffer(hizCS);
-        
+        GenerateCullingPosBuffer(_cmd, hizCS);
+
         if(_gpuInstanceSetting.cullingOn)
-            Culling(hizCS, renderingData.cameraData);
+            Culling(_cmd, hizCS, renderingData.cameraData);
         
-        _cmd.DrawMeshInstancedIndirect(
-            _gpuInstanceSetting.instanceMesh, 
-            0, 
-            _material, 
-            0, 
-            _interLockBuffer, 
-            0, 
-            _materialBlock);
+        Debug.LogWarning("visible object count : " + _visiblePosMatrixBuffer.count);
+        // _cmd.DrawMeshInstancedIndirect(
+        //     _gpuInstanceSetting.instanceMesh, 
+        //     0, 
+        //     _material, 
+        //     0, 
+        //     _interLockBuffer, 
+        //     0, 
+        //     _materialBlock);
 
         #endregion
 
@@ -129,7 +133,7 @@ class GPUInstancePass : ScriptableRenderPass
     /// 生成CullingCS所需要的Instance position数据
     /// </summary>
     /// <param name="cs"></param>
-    public void GenerateCullingPosBuffer(ComputeShader cs)
+    public void GenerateCullingPosBuffer(CommandBuffer cmd, ComputeShader cs)
     {
         if(_allPosMatrixBuffer == null && _visiblePosMatrixBuffer == null && _interLockBuffer == null)
         {
@@ -154,14 +158,15 @@ class GPUInstancePass : ScriptableRenderPass
                 //或 Graphics.DrawMeshInstancedIndirect 参数的 ComputeBuffer
                 _interLockBuffer = new ComputeBuffer(5, sizeof(uint), ComputeBufferType.IndirectArguments);
                 _interLockBuffer.SetData(args);
-
                 //发送数据到CS进行剔除操作
-                cs.SetBuffer(hizCSKernelIndex, "allPosBuffer", _allPosMatrixBuffer);
-                cs.SetBuffer(hizCSKernelIndex, "visiblePosBuffer", _visiblePosMatrixBuffer);
-                cs.SetBuffer(hizCSKernelIndex, "interLockBuffer", _interLockBuffer);
-                
+                cmd.SetComputeBufferParam(cs, hizCSKernelIndex, "allPosMatrixBuffer", _allPosMatrixBuffer);
+                //cmd.SetComputeBufferParam(cs, hizCSKernelIndex, "visiblePosMatrixBuffer", _visiblePosMatrixBuffer);
+                cs.SetBuffer(hizCSKernelIndex, "visiblePosMatrixBuffer", _visiblePosMatrixBuffer);
+                cmd.SetComputeBufferParam(cs, hizCSKernelIndex, "interLockBuffer", _interLockBuffer);
+
                 _materialBlock.SetMatrix(ShaderProperties.obj2World, _groundTran.localToWorldMatrix);
-                //_materialBlock.SetBuffer(ShaderProperties.grassInfos, _visiblePosMatrixBuffer);
+                _materialBlock.SetBuffer(ShaderProperties.grassInfos, _visiblePosMatrixBuffer);
+                Debug.LogWarning("all object count : " + _allPosMatrixBuffer.count);
             }
         }
     }
@@ -225,7 +230,7 @@ class GPUInstancePass : ScriptableRenderPass
         return allPosMatrix;
     }
     
-    public void Culling(ComputeShader cs, CameraData camData)
+    public void Culling(CommandBuffer cmd, ComputeShader cs, CameraData camData)
     {
         args[1] = 0;
         _interLockBuffer.SetData(args);
@@ -235,20 +240,19 @@ class GPUInstancePass : ScriptableRenderPass
         if (_gpuInstanceSetting.sceneCullingOn)
         {
             cam = camData.camera;
-            cs.SetMatrix("matrix_VP", camData.GetGPUProjectionMatrix() * cam.worldToCameraMatrix);
+            cmd.SetComputeMatrixParam(cs, "matrix_VP", camData.GetGPUProjectionMatrix() * cam.worldToCameraMatrix);
         }
         else
         {
             cam = Camera.main;
             cs.SetMatrix("matrix_VP", GL.GetGPUProjectionMatrix(cam.projectionMatrix, false) * cam.worldToCameraMatrix);
         }
-
-        cs.SetVector("camPos", cam.transform.position);
-        cs.SetVector("camDir", cam.transform.forward);
-        cs.SetFloat("camHalfFov", cam.fieldOfView / 2);
-        
+        // cmd.SetComputeVectorParam(cs, "camPos", cam.transform.position);
+        // cmd.SetComputeVectorParam(cs, "camDir", cam.transform.forward);
+        // cmd.SetComputeFloatParam(cs, "camHalfFov", cam.fieldOfView / 2);
+        cmd.SetComputeTextureParam(cs, hizCSKernelIndex, "_HiZBufferRT", _hiZBufferRT.Identifier());
         //这里设置线程组数量，160的平方是总的实例化数量， 16是CS里设置的单个线程组中的线程数量
-        cs.Dispatch(hizCSKernelIndex, 160 / 16, 160 / 16, 1);
+        cmd.DispatchCompute(cs, hizCSKernelIndex, 160 / 16, 160 / 16, 1);
     }
 
     public void ReleaseCullingBuffer()
