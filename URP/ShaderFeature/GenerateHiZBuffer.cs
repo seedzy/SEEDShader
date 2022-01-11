@@ -14,7 +14,6 @@ class GenerateHiZBufferPass : ScriptableRenderPass
     private Material _material;
 
 
-
     /// <summary>
     /// 函数名字面意思
     /// </summary>

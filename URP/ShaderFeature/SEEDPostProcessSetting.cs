@@ -15,6 +15,7 @@ namespace SEED.Rendering
         internal static string screenSpaceShadowPath = "Hidden/Universal Render Pipeline/ScreenSpaceShadows";
         internal static string GPUInstanceGrass = "SEEDzy/URP/GPUInstance/Grass";
         internal static string GenerateMipMaps = "SEEDzy/URP/GenerateMipMaps";
+        internal static string GaussianBlur = "SEEDzy/URP/RenderFeature/Bloom";
     }
     #endregion
     
@@ -27,6 +28,8 @@ namespace SEED.Rendering
         public bool enable = false;
         [Range(1, 10)]
         public int downSample = 1;
+        
+        public bool GaussianSoftShadow = true;
     }
 
     [Serializable]

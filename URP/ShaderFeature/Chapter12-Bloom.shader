@@ -5,7 +5,7 @@ Shader "SEEDzy/URP/RenderFeature/Bloom" {
 		_MainTex ("Base (RGB)", 2D) = "white" {}
 		_Bloom ("Bloom (RGB)", 2D) = "black" {}
 		_LuminanceThreshold ("Luminance Threshold", Float) = 0.5
-		_BlurSize ("Blur Size", Float) = 1.0
+		_BlurSize ("Blur Size", Float) = 10
 	}
 	SubShader {
 		HLSLINCLUDE

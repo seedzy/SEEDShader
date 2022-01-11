@@ -6,6 +6,18 @@
 
 Texture2D _SpecularBRDFTex;         SamplerState sampler_SpecularBRDFTex;
 
+
+struct SurfaceInput
+{
+    half4 albedo;
+    half  smoothness;
+    half  metallic;
+    half  occlusion;
+    half3 emissionMask;
+    half3 normalTS;
+};
+
+
 struct BRDFInput
 {
     half3 preDiffuse;
@@ -13,11 +25,11 @@ struct BRDFInput
     half  roughness;
 };
 
-inline float SmoothToRoughness(float smoothness)
-{
-    float perceptualRoughness = PerceptualSmoothnessToPerceptualRoughness(smoothness);
-    return max(PerceptualRoughnessToRoughness(perceptualRoughness), HALF_MIN_SQRT);
-}
+// inline float SmoothToRoughness(float smoothness)
+// {
+//     float perceptualRoughness = PerceptualSmoothnessToPerceptualRoughness(smoothness);
+//     return max(PerceptualRoughnessToRoughness(perceptualRoughness), HALF_MIN_SQRT);
+// }
 
 // Pow5 uses the same amount of instructions as generic pow(), but has 2 advantages:
 // 1) better instruction pipelining
@@ -42,22 +54,22 @@ inline half4 Pow5 (half4 x)
     return x*x * x*x * x;
 }
 
-inline half3 FresnelTerm (half3 F0, half cosA)
-{
-    half t = Pow5 (1 - cosA);   // ala Schlick interpoliation
-    return F0 + (1-F0) * t;
-}
-inline half3 FresnelLerp (half3 F0, half3 F90, half cosA)
-{
-    half t = Pow5 (1 - cosA);   // ala Schlick interpoliation
-    return lerp (F0, F90, t);
-}
-// approximage Schlick with ^4 instead of ^5
-inline half3 FresnelLerpFast (half3 F0, half3 F90, half cosA)
-{
-    half t = Pow4 (1 - cosA);
-    return lerp (F0, F90, t);
-}
+// inline half3 FresnelTerm (half3 F0, half cosA)
+// {
+//     half t = Pow5 (1 - cosA);   // ala Schlick interpoliation
+//     return F0 + (1-F0) * t;
+// }
+// inline half3 FresnelLerp (half3 F0, half3 F90, half cosA)
+// {
+//     half t = Pow5 (1 - cosA);   // ala Schlick interpoliation
+//     return lerp (F0, F90, t);
+// }
+// // approximage Schlick with ^4 instead of ^5
+// inline half3 FresnelLerpFast (half3 F0, half3 F90, half cosA)
+// {
+//     half t = Pow4 (1 - cosA);
+//     return lerp (F0, F90, t);
+// }
 
 /// <summary>
 /// 混入粗糙度因子的F项，主要在间接光使用

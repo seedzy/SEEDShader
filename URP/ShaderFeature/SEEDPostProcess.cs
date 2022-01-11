@@ -45,6 +45,7 @@ public class SEEDPostProcess : ScriptableRendererFeature
     
    private SEEDPostProcessPass       PPPass                 = null;
    private ScreenSpaceShadowTexPass  SSShadow               = null;
+   private ScreenSpaceShadowBlur     SSBlur                 = null;
    private ScreenSpaceShadowPostPass SSShadowPost           = null;
    private GPUInstancePass           GPUInstancePass        = null;
    private GenerateHiZBufferPass     GenerateHiZBufferPass  = null;
@@ -61,7 +62,9 @@ public class SEEDPostProcess : ScriptableRendererFeature
            //ScreenSpaceShadowTexPass
            SSShadow = new ScreenSpaceShadowTexPass(screenSpaceShadowSetting);
            SSShadow.renderPassEvent = RenderPassEvent.AfterRenderingPrePasses;
-
+           if(screenSpaceShadowSetting.GaussianSoftShadow) 
+               SSBlur = new ScreenSpaceShadowBlur(SSShadow.GetShadowRenderTextureHandle());
+           SSBlur.renderPassEvent = RenderPassEvent.AfterRenderingPrePasses;
            SSShadowPost = new ScreenSpaceShadowPostPass();
            SSShadowPost.renderPassEvent = RenderPassEvent.BeforeRenderingTransparents;
        }
@@ -97,6 +100,8 @@ public class SEEDPostProcess : ScriptableRendererFeature
            {
                SSShadow.SetUp();
                renderer.EnqueuePass(SSShadow);
+               if(screenSpaceShadowSetting.GaussianSoftShadow) 
+                   renderer.EnqueuePass(SSBlur);
                renderer.EnqueuePass(SSShadowPost);
            }
        }
