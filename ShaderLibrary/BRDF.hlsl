@@ -2,7 +2,9 @@
 #define SEEDSDHADER_LIGHTING_BRDF
 
 
-#define UNITY_INV_PI        0.31830988618f
+#define UNITY_INV_PI                0.31830988618f
+#define F0                          half3(0.04, 0.04, 0.04)
+#define SPECULARBRDF_DENOMINATOR    4.0 * max(dot(N, V), 0.0) * max(dot(N, L), 0.0) + 0.001
 
 Texture2D _SpecularBRDFTex;         SamplerState sampler_SpecularBRDFTex;
 
@@ -20,9 +22,14 @@ struct SurfaceInput
 
 struct BRDFInput
 {
-    half3 preDiffuse;
-    half3 specular;
-    half  roughness;
+    half3 ks;
+    half3 kd;
+    half LdotV;
+    half NdotL;
+    half NdotV;
+    //half HdotV;
+    half NdotH;
+    //half LdotH;
 };
 
 // inline float SmoothToRoughness(float smoothness)
@@ -72,11 +79,98 @@ inline half4 Pow5 (half4 x)
 // }
 
 /// <summary>
+/// D项
+/// </summary>
+float DistributionGGX(half3 N, half3 H, float roughness)
+{
+    float a      = roughness*roughness;
+    float a2     = a*a;
+    float NdotH  = max(dot(N, H), 0.0);
+    float NdotH2 = NdotH*NdotH;
+
+    float nom   = a2;
+    float denom = (NdotH2 * (a2 - 1.0) + 1.0);
+    denom = PI * denom * denom;
+
+    return nom / denom;
+}
+
+float GeometrySchlickGGX(float NdotV, float roughness)
+{
+    float r = (roughness + 1.0);
+    float k = (r*r) / 8.0;
+
+    float nom   = NdotV;
+    float denom = NdotV * (1.0 - k) + k;
+
+    return nom / denom;
+}
+/// <summary>
+/// G项
+/// </summary>
+float GeometrySmith(half3 N, half3 V, half3 L, float roughness)
+{
+    float NdotV = max(dot(N, V), 0.0);
+    float NdotL = max(dot(N, L), 0.0);
+    float ggx2  = GeometrySchlickGGX(NdotV, roughness);
+    float ggx1  = GeometrySchlickGGX(NdotL, roughness);
+
+    return ggx1 * ggx2;
+}
+
+/// <summary>
+/// HDRP的DV项,v项是G项和brdf分母的组合
+/// </summary>
+// Inline D_GGX() * V_SmithJointGGX() together for better code generation.
+real DV_SmithJointGGX_HDRP(real NdotH, real NdotL, real NdotV, real roughness)
+{
+    real a2 = Sq(roughness);
+
+    real partLambdaV = sqrt((-NdotV * a2 + NdotV) * NdotV + a2);
+    
+    real s = (NdotH * a2 - NdotH) * NdotH + 1.0;
+
+    real lambdaV = NdotL * partLambdaV;
+    real lambdaL = NdotV * sqrt((-NdotL * a2 + NdotL) * NdotL + a2);
+
+    real2 D = real2(a2, s * s);            // Fraction without the multiplier (1/Pi)
+    real2 G = real2(1, lambdaV + lambdaL); // Fraction without the multiplier (1/2)
+
+    // This function is only used for direct lighting.
+    // If roughness is 0, the probability of hitting a punctual or directional light is also 0.
+    // Therefore, we return 0. The most efficient way to do it is with a max().
+    return INV_PI * 0.5 * (D.x * G.x) / max(D.y * G.y, REAL_MIN);
+}
+
+/// <summary>
+/// metallic相关F0
+/// </summary>
+inline half3 GetF0(half3 albedo, half metallic)
+{
+    return lerp(F0, albedo, metallic);
+}
+
+/// <summary>
+/// [Schlick 1994, "An Inexpensive BRDF Model for Physically-Based Rendering"]
+/// </summary>
+inline half3 FresnelTerm_Schlick(float HdotV, half3 f0)
+{
+    return f0 + (1.0 - f0) * Pow5(1.0 - HdotV);
+}
+/// <summary>
+/// UE加速版Fresnel
+/// </summary>
+inline half3 FresnelTerm_UE(float HdotV, half3 f0)
+{
+    f0 + (1 - f0) * pow(2, (-5.55473 * HdotV - 6.98316) * HdotV);
+}
+
+/// <summary>
 /// 混入粗糙度因子的F项，主要在间接光使用
 /// </summary>
-inline half3 FresnelSchlickRoughness(float cosTheta, half3 F0, float roughness)
+inline half3 FresnelSchlickRoughness(float cosTheta, half3 f0, float roughness)
 {
-    return F0 + (max((1.0 - roughness).rrr, F0) - F0) * Pow5(1.0 - cosTheta);
+    return f0 + (max((1.0 - roughness).rrr, f0) - f0) * Pow5(1.0 - cosTheta);
 }
 
 inline float GGXTerm (float NdotH, float roughness)
@@ -86,13 +180,18 @@ inline float GGXTerm (float NdotH, float roughness)
     return UNITY_INV_PI * a2 / (d * d + 1e-7f); 
 }
 
-half DisneyDiffuse(half NdotV, half NdotL, half LdotH, half perceptualRoughness)
+half DisneyDiffuse(half NdotV, half NdotL, half LdotV, half perceptualRoughness)
 {
-    half fd90 = 0.5 + 2 * LdotH * LdotH * perceptualRoughness;
+    // (2 * LdotH * LdotH) = 1 + LdotV
+    // real fd90 = 0.5 + (2 * LdotH * LdotH) * perceptualRoughness;
+    real fd90 = 0.5 + (perceptualRoughness + perceptualRoughness * LdotV);
     // Two schlick fresnel term
-    half lightScatter   = (1 + (fd90 - 1) * Pow5(1 - NdotL));
-    half viewScatter    = (1 + (fd90 - 1) * Pow5(1 - NdotV));
-    return lightScatter * viewScatter;
+    //这两行是原函数，两个稍有不同的fresnel，fd90-1的正负会在后面相乘抵消，所以这里直接用UE的fresnel简化
+    // half lightScatter   = (1 + (fd90 - 1) * Pow5(1 - NdotL));
+    // half viewScatter    = (1 + (fd90 - 1) * Pow5(1 - NdotV));
+    half lightScatter   = FresnelTerm_UE(NdotL, fd90);
+    half viewScatter    = FresnelTerm_UE(NdotV, fd90);
+    return lightScatter * viewScatter * UNITY_INV_PI;
 }
 
 /// <summary>

@@ -5,7 +5,7 @@
 /////////////////////////////////////
 
 ////////////////////property
-TEXTURE2D(_BaseMap);            SAMPLER(sampler_BaseMap);
+//TEXTURE2D(_BaseMap);            SAMPLER(sampler_BaseMap);
 ////////////////////////////////////
 
 
