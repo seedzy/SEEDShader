@@ -1,10 +1,18 @@
-Shader "SEEDzy/URP/SEEDPBR/SEED_Lit"
+Shader "SEEDzy/SEEDPBR/SEED_Lit"
 {
     Properties
     {
-        _BaseMap ("BaseMap", 2D) = "white" {}
-        _Smoe    ("SMOE", 2D) = "Black"{}
-        _BRDF    ("BRDF", 2D) = "Black"{}
+        _BaseMap  ("BaseMap", 2D) = "white" {}
+        _Albedo   ("BaseColor", COlor) = (1,1,1,1)
+        _BumpMap  ("Normal", 2D) = "Black"{}
+        _BumpScale("BumpScale", range(0, 1)) = 1
+        _Smoe     ("SMOE", 2D) = "Black"{}
+        _SpecularBRDFTex    ("BRDF", 2D) = "Black"{}
+        _Smoothness  ("s", range(0,1)) = 1
+        _Metallic    ("M", range(0,1)) = 1
+        _Occlusion   ("O", range(0,1)) = 1
+        _Emission    ("E", range(0,1)) = 0
+        [HDR]_EmissionColor("EmissionPower", Color) = (1,1,1,1)
         
         
         // Blending state
@@ -25,16 +33,23 @@ Shader "SEEDzy/URP/SEEDPBR/SEED_Lit"
         {
             Tags{"LightMode" = "UniversalForward"}
             
-            Blend[_SrcBlend][_DstBlend]
-            ZWrite[_ZWrite]
-            Cull[_Cull]
+//            Blend[_SrcBlend][_DstBlend]
+//            ZWrite[_ZWrite]
+//            Cull[_Cull]
+            //Cull off
+            
             
             HLSLPROGRAM
+
+            #pragma shader_feature_local_fragment _MIXMAP_OFF
+            
             #pragma vertex vert
             #pragma fragment frag
 
+            #define _NORMALMAP
+
             #include "Lit_CBuffer.hlsl"
-            #include "SEED_Lit_InputDataInit.hlsl"
+            #include "SEED_Lit_Input.hlsl"
             #include "SEED_Lit_Forward.hlsl"
 
             ENDHLSL

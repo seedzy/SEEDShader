@@ -4,36 +4,53 @@
 ///////////////////////////include
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Input.hlsl"
 #include "Assets/Shader/SEEDShader/ShaderLibrary/BRDF.hlsl"
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/ImageBasedLighting.hlsl"
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Shadows.hlsl"
 ////////////////////////////////////////////////////
 
-inline void InitBRDFInputData(InputData inputData, SurfaceInput surfaceInput, half3 lightDirectionWS, out BRDFInput brdfInput)
+
+inline void InitBRDFInput(InputData inputData, SurfaceInput surfaceInput, half3 lightDirectionWS, out BRDFInput brdfInput)
 {
-    half3 H    = saturate(lightDirectionWS + inputData.viewDirectionWS);
-    half HdotV = saturate(dot(H, inputData.viewDirectionWS));
-    half3 f0   = GetF0(surfaceInput.albedo, surfaceInput.metallic);
-    half3 ks   = FresnelTerm_UE(HdotV, f0);
+    half3 H    = normalize(lightDirectionWS + inputData.viewDirectionWS);
+    half perceptualRoughness = 1 - surfaceInput.smoothness;
     
-    brdfInput.ks    = ks;
-    brdfInput.kd    = (1 - ks)(1 - surfaceInput.metallic);
-    brdfInput.NdotH = saturate(dot(inputData.normalWS, H));                         //共使用：1 次
-    brdfInput.NdotL = saturate(dot(inputData.normalWS, lightDirectionWS));          //共使用：2 次
-    brdfInput.NdotV = saturate(dot(inputData.normalWS, inputData.viewDirectionWS)); //共使用：2 次
-    brdfInput.LdotV = saturate(dot(lightDirectionWS, inputData.viewDirectionWS));   //共使用：1 次
+    brdfInput.f0        = GetF0(surfaceInput.albedo.rgb, surfaceInput.metallic);        //共使用：2 次
+    
+    brdfInput.perceptualRoughness = perceptualRoughness;                                //共使用：2 次
+    //没记错的话是epic说的平方更好
+    brdfInput.roughness = perceptualRoughness * perceptualRoughness;                    //共使用：3 次
+    brdfInput.NdotH     = saturate(dot(inputData.normalWS, H));                         //共使用：1 次
+    brdfInput.NdotL     = saturate(dot(inputData.normalWS, lightDirectionWS));          //共使用：2 次
+    brdfInput.NdotV     = saturate(dot(inputData.normalWS, inputData.viewDirectionWS)); //共使用：3 次
+    brdfInput.LdotV     = saturate(dot(lightDirectionWS, inputData.viewDirectionWS));   //共使用：1 次
+    brdfInput.HdotV     = saturate(dot(H, inputData.viewDirectionWS));                  //共使用：2 次
 }
 
-void IndirectLight()
+half3 IndirectLight(InputData inputData, SurfaceInput surfaceInput, BRDFInput brdfInput)
 {
+    half3 ks = FresnelSchlickRoughness(brdfInput.HdotV, brdfInput.f0, brdfInput.roughness);
+    half3 kd = (1 - ks) * (1 - surfaceInput.metallic);;
     
+    half3 reflectVector = reflect(-inputData.viewDirectionWS, inputData.normalWS);
+    half2 envBRDF = BRDF_Specular_Lut(brdfInput.NdotV, brdfInput.roughness);
+    
+    half3 iblDiffuse  = inputData.bakedGI;
+    half3 iblSpecular = GlossyEnvironmentReflection(reflectVector, brdfInput.perceptualRoughness, surfaceInput.occlusion);
+
+    half3 diffuseTerm  = kd * iblDiffuse * surfaceInput.albedo.rgb * surfaceInput.occlusion;
+    half3 specularTerm = iblSpecular * (ks * envBRDF.r + envBRDF.g);
+    return diffuseTerm + specularTerm;
 }
 
 half3 DirectLight(InputData inputData, SurfaceInput surfaceInput, BRDFInput brdfInput)
 {
-    half perceptualRoughness = 1 - surfaceInput.smoothness;
-    //没记错的话是epic说的平方更好
-    half roughness = perceptualRoughness * perceptualRoughness;
+    half3 ks = FresnelTerm_UE(brdfInput.HdotV, brdfInput.f0);
+    half3 kd = (1 - ks) * (1 - surfaceInput.metallic);
     
-    half3 diffuseTerm  = brdfInput.kd * DisneyDiffuse(brdfInput.NdotV, brdfInput.NdotL, brdfInput.LdotV, perceptualRoughness) * surfaceInput.albedo;
-    half3 spevularTerm = brdfInput.ks * DV_SmithJointGGX_HDRP(brdfInput.NdotH, brdfInput.NdotL, brdfInput.NdotV, roughness);
+    half3 diffuseTerm  = kd * DisneyDiffuse(brdfInput.NdotV, brdfInput.NdotL, brdfInput.LdotV, brdfInput.perceptualRoughness) * surfaceInput.albedo.rgb;
+    half3 spevularTerm = ks * DV_SmithJointGGX_HDRP(brdfInput.NdotH, brdfInput.NdotL, brdfInput.NdotV, brdfInput.roughness);
+    
     return diffuseTerm + spevularTerm;
 }
 
@@ -45,9 +62,25 @@ half4 DisneyDiffuseSpecularLutPBR(InputData inputData, SurfaceInput surfaceInput
 // #else
 //     bool specularHighlightsOff = false;
 // #endif
-    BRDFInput brdfInput = BRDFInput(0);
-    InitBRDFInputData(inputData, surfaceInput, brdfInput);
+
+    Light light = GetMainLight();
+
+    half3 lightDirectionWS = normalize(light.direction);
+    BRDFInput brdfInput;
+    InitBRDFInput(inputData, surfaceInput, lightDirectionWS, brdfInput);
+
+    half3 color = DirectLight(inputData, surfaceInput, brdfInput);
+    color *= light.color * saturate(dot(inputData.normalWS, lightDirectionWS));
+    //URP包括Builtin都没除pi，为了保持亮度，这里先加回去
+    color *= PI;
     
+    color += IndirectLight(inputData, surfaceInput, brdfInput);
+
+    color += surfaceInput.emissionMask * surfaceInput.albedo.rgb;
+
+    
+
+    return half4(color, surfaceInput.albedo.a);
 
 //     BRDFData brdfDataClearCoat = (BRDFData)0;
 // #if defined(_CLEARCOAT) || defined(_CLEARCOATMAP)

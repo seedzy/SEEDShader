@@ -1,6 +1,7 @@
 #ifndef SEEDSDHADER_LIGHTING_BRDF
 #define SEEDSDHADER_LIGHTING_BRDF
 
+#include "Packages/com.unity.render-pipelines.core/ShaderLibrary/Common.hlsl"
 
 #define UNITY_INV_PI                0.31830988618f
 #define F0                          half3(0.04, 0.04, 0.04)
@@ -22,12 +23,13 @@ struct SurfaceInput
 
 struct BRDFInput
 {
-    half3 ks;
-    half3 kd;
+    half3 f0;
+    half perceptualRoughness;
+    half roughness;
     half LdotV;
     half NdotL;
     half NdotV;
-    //half HdotV;
+    half HdotV;
     half NdotH;
     //half LdotH;
 };
@@ -162,15 +164,15 @@ inline half3 FresnelTerm_Schlick(float HdotV, half3 f0)
 /// </summary>
 inline half3 FresnelTerm_UE(float HdotV, half3 f0)
 {
-    f0 + (1 - f0) * pow(2, (-5.55473 * HdotV - 6.98316) * HdotV);
+    return f0 + (1 - f0) * pow(2, (-5.55473 * HdotV - 6.98316) * HdotV);
 }
 
 /// <summary>
 /// 混入粗糙度因子的F项，主要在间接光使用
 /// </summary>
-inline half3 FresnelSchlickRoughness(float cosTheta, half3 f0, float roughness)
+inline half3 FresnelSchlickRoughness(float HdotV, half3 f0, float roughness)
 {
-    return f0 + (max((1.0 - roughness).rrr, f0) - f0) * Pow5(1.0 - cosTheta);
+    return f0 + (max((1.0 - roughness).rrr, f0) - f0) * Pow5(1.0 - HdotV);
 }
 
 inline float GGXTerm (float NdotH, float roughness)
@@ -186,11 +188,10 @@ half DisneyDiffuse(half NdotV, half NdotL, half LdotV, half perceptualRoughness)
     // real fd90 = 0.5 + (2 * LdotH * LdotH) * perceptualRoughness;
     real fd90 = 0.5 + (perceptualRoughness + perceptualRoughness * LdotV);
     // Two schlick fresnel term
-    //这两行是原函数，两个稍有不同的fresnel，fd90-1的正负会在后面相乘抵消，所以这里直接用UE的fresnel简化
-    // half lightScatter   = (1 + (fd90 - 1) * Pow5(1 - NdotL));
-    // half viewScatter    = (1 + (fd90 - 1) * Pow5(1 - NdotV));
-    half lightScatter   = FresnelTerm_UE(NdotL, fd90);
-    half viewScatter    = FresnelTerm_UE(NdotV, fd90);
+    half lightScatter   = (1 + (fd90 - 1) * Pow5(1 - NdotL));
+    half viewScatter    = (1 + (fd90 - 1) * Pow5(1 - NdotV));
+    // half lightScatter   = 1 - FresnelTerm_UE(fd90, NdotL);
+    // half viewScatter    = 1 - FresnelTerm_UE(fd90, NdotV);
     return lightScatter * viewScatter * UNITY_INV_PI;
 }
 

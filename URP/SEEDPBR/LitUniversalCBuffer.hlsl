@@ -1,9 +1,0 @@
-#ifndef LIT_UNIVERSAL_CBUFFER_LIST
-#define LIT_UNIVERSAL_CBUFFER_LIST
-
-#define LIT_UNIVERSAL_CBUFFER \
-    float4 _BaseMap_ST;
-
-
-
-#endif
