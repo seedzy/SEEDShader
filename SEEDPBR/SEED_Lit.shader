@@ -5,7 +5,7 @@ Shader "SEEDzy/SEEDPBR/SEED_Lit"
         _BaseMap  ("BaseMap", 2D) = "white" {}
         _Albedo   ("BaseColor", COlor) = (1,1,1,1)
         _BumpMap  ("Normal", 2D) = "Black"{}
-        _BumpScale("BumpScale", range(0, 1)) = 1
+        _BumpScale("BumpScale", range(-1, 1)) = 1
         _Smoe     ("SMOE", 2D) = "Black"{}
         _SpecularBRDFTex    ("BRDF", 2D) = "Black"{}
         _Smoothness  ("s", range(0,1)) = 1

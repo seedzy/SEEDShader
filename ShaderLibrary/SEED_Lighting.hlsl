@@ -79,7 +79,7 @@ half4 DisneyDiffuseSpecularLutPBR(InputData inputData, SurfaceInput surfaceInput
     color += surfaceInput.emissionMask * surfaceInput.albedo.rgb;
 
     
-
+    //return surfaceInput.albedo;
     return half4(color, surfaceInput.albedo.a);
 
 //     BRDFData brdfDataClearCoat = (BRDFData)0;
