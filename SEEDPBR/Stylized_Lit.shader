@@ -1,4 +1,4 @@
-Shader "SEEDzy/SEEDPBR/Lit"
+Shader "SEEDzy/SEEDPBR/Stylized_Lit"
 {
     Properties
     {
@@ -16,6 +16,14 @@ Shader "SEEDzy/SEEDPBR/Lit"
         [Toggle(_MIXMAP_ON)]_MixMapOn("MixMapOn", float) = 1
         [Toggle(_NORMALMAP)]_NormalMapOn("NormalMapOn", float) = 1
         
+        [Header(Stylized)]
+        _DarkAreasColor("DarkAreasColor", Color) = (0,0,0,0)
+        _DarkAreasSmooth("DarkAreasSmooth", Range(0,0.5)) = 0.01
+        _DarkAreasThreshold("DarkAreasThreshold", Range(0,1)) = 0.4
+        
+        _SpecularThreshold("SpecularThreshold", Range(0,0.5)) = 0.07
+        _SpecularSmooth("SpecularSmooth", Range(0,0.5)) = 0.01
+        _SpecularStrength("SpecularStrength", float) = 1.5
         // Blending state
         [HideInInspector] _Surface("__surface", Float) = 0.0
         [HideInInspector] _Blend("__blend", Float) = 0.0
@@ -48,8 +56,8 @@ Shader "SEEDzy/SEEDPBR/Lit"
             #pragma vertex vert
             #pragma fragment frag
 
-            #include "SEED_Lit_Input.hlsl"
-            #include "SEED_Lit_Forward.hlsl"
+            #include "Stylized_Lit_Input.hlsl"
+            #include "Stylized_Lit_Pass.hlsl"
 
             ENDHLSL
         }

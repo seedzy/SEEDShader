@@ -28,6 +28,7 @@ public class SEEDPostProcess : ScriptableRendererFeature
     {
         internal ScreenSpaceShadowSetting _screenSpaceShadowSetting;
 
+        //SEEDPostProcessPass
         public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
         {
             

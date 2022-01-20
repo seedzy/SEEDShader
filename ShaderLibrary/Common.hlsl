@@ -30,4 +30,9 @@ float rand(float3 co)
     return frac(sin(dot(co.xyz, float3(12.9898, 78.233, 53.539))) * 43758.5453);
 }
 
+half LinearStep(half minValue, half maxValue, half In)
+{
+    return saturate((In-minValue) / (maxValue - minValue));
+}
+
 #endif
