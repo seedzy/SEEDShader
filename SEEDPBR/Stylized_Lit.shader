@@ -20,10 +20,16 @@ Shader "SEEDzy/SEEDPBR/Stylized_Lit"
         _DarkAreasColor("DarkAreasColor", Color) = (0,0,0,0)
         _DarkAreasSmooth("DarkAreasSmooth", Range(0,0.5)) = 0.01
         _DarkAreasThreshold("DarkAreasThreshold", Range(0,1)) = 0.4
-        
+        [Space]
         _SpecularThreshold("SpecularThreshold", Range(0,0.5)) = 0.07
         _SpecularSmooth("SpecularSmooth", Range(0,0.5)) = 0.01
         _SpecularStrength("SpecularStrength", float) = 1.5
+        [Space]
+        [Toggle(_GRADIENTMAP_ON)]_GradientMapOn("GradientMapOn", float) = 0
+        _GradientMap("GradientMap", 2D) = "white" {}
+        
+        _BrushWork("BrushWork", 2D) = "white" {}
+        _BrushStrength("BrushStrength", range(0,1)) = 0
         // Blending state
         [HideInInspector] _Surface("__surface", Float) = 0.0
         [HideInInspector] _Blend("__blend", Float) = 0.0
@@ -51,6 +57,7 @@ Shader "SEEDzy/SEEDPBR/Stylized_Lit"
             HLSLPROGRAM
 
             #pragma shader_feature_local_fragment _MIXMAP_ON
+            #pragma shader_feature_local_fragment _GRADIENTMAP_ON
             #pragma shader_feature_local _NORMALMAP
             
             #pragma vertex vert

@@ -81,10 +81,23 @@ half4 frag (v2f i) : COLOR
     half3 lightDirectionWS = normalize(light.direction);
     ////////////////////
     half NdotL = dot(inputData.normalWS, lightDirectionWS);
-    half radiance = 0.5 * NdotL + 0.5;
+    //half radiance = 0.5 * NdotL + 0.5;
+    half brushWork = _BrushWork.Sample(sampler_BrushWork, TRANSFORM_TEX(i.uv, _BrushWork)).r;
+    half radiance = lerp(0.5, brushWork, _BrushStrength) * NdotL + 0.5;
+    //radiance = lerp(brushWork, 1, radiance);
+    //radiance *= saturate(brushWork + radiance);
+    
+#ifdef _GRADIENTMAP_ON
+    surfaceInput.albedo.rgb = _GradientMap.Sample(sampler_GradientMap, half2(radiance, 0.5));
+#else
     radiance = LinearStep(_DarkAreasThreshold - _DarkAreasSmooth, _DarkAreasThreshold + _DarkAreasSmooth, radiance);
-    //difuse和specular的albedo分开处理，不然风格化会有问题,。。。。。没事了
+    //radiance *= saturate(brushWork + radiance);
+    //radiance = radiance * brushWork;
     surfaceInput.albedo.rgb = lerp(_DarkAreasColor * surfaceInput.albedo.rgb, surfaceInput.albedo.rgb, radiance);
+#endif
+
+    //surfaceInput.albedo.rgb *= _BrushWork.Sample(sampler_BrushWork, i.uv).rrr;
+    
     /////////////////////////
     BRDFInput brdfInput;
     InitBRDFInput(inputData, surfaceInput, lightDirectionWS, brdfInput);

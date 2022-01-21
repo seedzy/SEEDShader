@@ -13,11 +13,15 @@ half _DarkAreasThreshold;
 half _SpecularThreshold;
 half _SpecularSmooth;
 half _SpecularStrength;
+half _BrushStrength;
+half4 _BrushWork_ST;
 CBUFFER_END
 
 TEXTURE2D(_BaseMap);      SAMPLER(sampler_BaseMap); 
 TEXTURE2D(_Smoe);         SAMPLER(sampler_Smoe); 
-TEXTURE2D(_BumpMap);         SAMPLER(sampler_BumpMap); 
+TEXTURE2D(_BumpMap);      SAMPLER(sampler_BumpMap); 
+TEXTURE2D(_GradientMap);  SAMPLER(sampler_GradientMap); 
+TEXTURE2D(_BrushWork);    SAMPLER(sampler_BrushWork); 
 
 
 half3 SampleNormal(float2 uv, TEXTURE2D_PARAM(bumpMap, sampler_bumpMap), half scale = 1.0h)
