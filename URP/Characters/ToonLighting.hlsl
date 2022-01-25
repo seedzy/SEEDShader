@@ -18,12 +18,17 @@ half3 ShadeGI(ToonSurfaceData surfaceData)
     return averageSH * indirectOcclusion;
 }
 
+half3 Directlight(ToonSurfaceData surfaceData, InputData inputData, Light light)
+{
+    half NdotL = dot(inputData.normalWS, light.direction);
+}
+
 
 half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData)
 {
     // Indirect lighting
     
-#ifdef _USE_NORAMLSH
+#ifdef _USE_NORMALSH
     half3 Indirectlight = inputData.bakedGI * surfaceData.occlusion * surfaceData.albedo;
 #else
     half3 Indirectlight = ShadeGI(surfaceData);

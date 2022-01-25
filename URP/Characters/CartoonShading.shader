@@ -101,7 +101,7 @@ Shader "SEEDzy/URP/Character/CartoonPreview"
 
             HLSLPROGRAM
 
-            #pragma shader_feature_local_fragment _USE_NORAMLSH
+            #pragma shader_feature_local_fragment _USE_NORMALSH
             
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS_CASCADE

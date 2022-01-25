@@ -24,6 +24,7 @@ Shader "SEEDzy/SEEDPBR/Stylized_Lit"
         _SpecularThreshold("SpecularThreshold", Range(0,0.5)) = 0.07
         _SpecularSmooth("SpecularSmooth", Range(0,0.5)) = 0.01
         _SpecularStrength("SpecularStrength", float) = 1.5
+        _SpecularMask("SpecularMask", 2D) = "White"{}
         [Space]
         [Toggle(_GRADIENTMAP_ON)]_GradientMapOn("GradientMapOn", float) = 0
         _GradientMap("GradientMap", 2D) = "white" {}

@@ -1,4 +1,4 @@
-#ifndef TOON_SURFACE_LIT_PASS
+ #ifndef TOON_SURFACE_LIT_PASS
 #define TOON_SURFACE_LIT_PASS
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
@@ -243,6 +243,8 @@ half4 ShadeFinalColor(v2f input) : SV_TARGET
     InitializeInputData(input, inputData);
 
 
+    Light mainLight = GetMainLight();
+    
     half3 finColor = ToonSurfaceShading();
 
 
