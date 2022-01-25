@@ -2,8 +2,8 @@ Shader "SEEDzy/URP/Character/CartoonPreview"
 {
     Properties
     {
-        [Header(High Level Setting)]
-        [ToggleUI]_IsFace("Is Face? (please turn on if this is a face material)", Float) = 0
+//        [Header(High Level Setting)]
+//        [ToggleUI]_IsFace("Is Face? (please turn on if this is a face material)", Float) = 0
 
         // all properties will try to follow URP Lit shader's naming convention
         // so switching your URP lit material's shader to this toon lit shader will preserve most of the original properties if defined in this shader
@@ -17,27 +17,27 @@ Shader "SEEDzy/URP/Character/CartoonPreview"
         [Toggle(_UseAlphaClipping)]_UseAlphaClipping("_UseAlphaClipping", Float) = 0
         _Cutoff("_Cutoff (Alpha Cutoff)", Range(0.0, 1.0)) = 0.5
 
-        [Header(Emission)]
-        [Toggle]_UseEmission("_UseEmission (on/off Emission completely)", Float) = 0
-        [HDR] _EmissionColor("_EmissionColor", Color) = (0,0,0)
-        _EmissionMulByBaseColor("_EmissionMulByBaseColor", Range(0,1)) = 0
-        [NoScaleOffset]_EmissionMap("_EmissionMap", 2D) = "white" {}
-        _EmissionMapChannelMask("_EmissionMapChannelMask", Vector) = (1,1,1,0)
+//        [Header(Emission)]
+//        [Toggle]_UseEmission("_UseEmission (on/off Emission completely)", Float) = 0
+//        [HDR] _EmissionColor("_EmissionColor", Color) = (0,0,0)
+//        _EmissionMulByBaseColor("_EmissionMulByBaseColor", Range(0,1)) = 0
+//        [NoScaleOffset]_EmissionMap("_EmissionMap", 2D) = "white" {}
+//        _EmissionMapChannelMask("_EmissionMapChannelMask", Vector) = (1,1,1,0)
 
-        [Header(Occlusion)]
-        [Toggle]_UseOcclusion("_UseOcclusion (on/off Occlusion completely)", Float) = 0
-        _OcclusionStrength("_OcclusionStrength", Range(0.0, 1.0)) = 1.0
-        [NoScaleOffset]_OcclusionMap("_OcclusionMap", 2D) = "white" {}
-        _OcclusionMapChannelMask("_OcclusionMapChannelMask", Vector) = (1,0,0,0)
-        _OcclusionRemapStart("_OcclusionRemapStart", Range(0,1)) = 0
-        _OcclusionRemapEnd("_OcclusionRemapEnd", Range(0,1)) = 1
+//        [Header(Occlusion)]
+//        [Toggle]_UseOcclusion("_UseOcclusion (on/off Occlusion completely)", Float) = 0
+//        _OcclusionStrength("_OcclusionStrength", Range(0.0, 1.0)) = 1.0
+//        [NoScaleOffset]_OcclusionMap("_OcclusionMap", 2D) = "white" {}
+//        _OcclusionMapChannelMask("_OcclusionMapChannelMask", Vector) = (1,0,0,0)
+//        _OcclusionRemapStart("_OcclusionRemapStart", Range(0,1)) = 0
+//        _OcclusionRemapEnd("_OcclusionRemapEnd", Range(0,1)) = 1
 
         [Header(Lighting)]
         _IndirectLightMinColor("_IndirectLightMinColor", Color) = (0.1,0.1,0.1,1) // can prevent completely black if lightprobe not baked
         _IndirectLightMultiplier("_IndirectLightMultiplier没用", Range(0,1)) = 1
         _DirectLightMultiplier("_DirectLightMultiplier没用", Range(0,1)) = 1
-        _CelShadeMidPoint("亮暗分界偏移", Range(-1,1)) = -0.5
-        _CelShadeSoftness("亮暗柔和过度", Range(0,1)) = 0.05
+        _CelShadeMidPoint("明暗分界", Range(-1,1)) = -0.5
+        _CelShadeSoftness("明暗柔和度", Range(0,1)) = 0.05
         _MainLightIgnoreCelShade("_MainLightIgnoreCelShade没用", Range(0,1)) = 0
         _AdditionalLightIgnoreCelShade("_AdditionalLightIgnoreCelShade没用", Range(0,1)) = 0.9
 
@@ -46,13 +46,13 @@ Shader "SEEDzy/URP/Character/CartoonPreview"
         _ReceiveShadowMappingPosOffset("_ReceiveShadowMappingPosOffset", Float) = 0
         _ShadowMapColor("_ShadowMapColor", Color) = (1,0.825,0.78)
 
-        [Header(Outline)]
-        _OutlineWidth("_OutlineWidth (World Space)", Range(0,10)) = 1
-        _OutlineColor("_OutlineColor", Color) = (0.5,0.5,0.5,1)
-        _OutlineZOffset("_OutlineZOffset (View Space)", Range(0,1)) = 0.0001
-        [NoScaleOffset]_OutlineZOffsetMaskTex("_OutlineZOffsetMask (black is apply ZOffset)", 2D) = "black" {}
-        _OutlineZOffsetMaskRemapStart("_OutlineZOffsetMaskRemapStart", Range(0,1)) = 0
-        _OutlineZOffsetMaskRemapEnd("_OutlineZOffsetMaskRemapEnd", Range(0,1)) = 1
+//        [Header(Outline)]
+//        _OutlineWidth("_OutlineWidth (World Space)", Range(0,10)) = 1
+//        _OutlineColor("_OutlineColor", Color) = (0.5,0.5,0.5,1)
+//        _OutlineZOffset("_OutlineZOffset (View Space)", Range(0,1)) = 0.0001
+//        [NoScaleOffset]_OutlineZOffsetMaskTex("_OutlineZOffsetMask (black is apply ZOffset)", 2D) = "black" {}
+//        _OutlineZOffsetMaskRemapStart("_OutlineZOffsetMaskRemapStart", Range(0,1)) = 0
+//        _OutlineZOffsetMaskRemapEnd("_OutlineZOffsetMaskRemapEnd", Range(0,1)) = 1
         
         [Header(Specular)]
         [Toggle]_UseSpecularMask("_SpecularMask (on/off Specular completely)", Float) = 0
@@ -102,6 +102,7 @@ Shader "SEEDzy/URP/Character/CartoonPreview"
             HLSLPROGRAM
 
             #pragma shader_feature_local_fragment _USE_NORMALSH
+            #pragma shader_feature_local_fragment _USE_GRADIENTMAP 
             
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS_CASCADE
@@ -178,63 +179,63 @@ Shader "SEEDzy/URP/Character/CartoonPreview"
         }
  
         // ShadowCaster pass. Used for rendering URP's shadowmaps
-        Pass
-        {
-            Name "ShadowCaster"
-            Tags{"LightMode" = "ShadowCaster"}
-
-            // more explict render state to avoid confusion
-            ZWrite On // the only goal of this pass is to write depth!
-            ZTest LEqual // early exit at Early-Z stage if possible            
-            ColorMask 0 // we don't care about color, we just want to write depth, ColorMask 0 will save some write bandwidth
-            Cull Back // support Cull[_Cull] requires "flip vertex normal" using VFACE in fragment shader, which is maybe beyond the scope of a simple tutorial shader
-
-            HLSLPROGRAM
-
-            // the only keywords we need in this pass = _UseAlphaClipping, which is already defined inside the HLSLINCLUDE block
-            // (so no need to write any multi_compile or shader_feature in this pass)
-
-            #pragma vertex VertexShaderWork
-            #pragma fragment BaseColorAlphaClipTest // we only need to do Clip(), no need shading
-
-            // because it is a ShadowCaster pass, define "ToonShaderApplyShadowBiasFix" to inject "remove shadow mapping artifact" code into VertexShaderWork()
-            #define ToonShaderApplyShadowBiasFix
-
-            // all shader logic written inside this .hlsl, remember to write all #define BEFORE writing #include
-            #include "SimpleURPToonLitOutlineExample_Shared.hlsl"
-
-            ENDHLSL
-        }
-
-        // DepthOnly pass. Used for rendering URP's offscreen depth prepass (you can search DepthOnlyPass.cs in URP package)
-        // For example, when depth texture is on, we need to perform this offscreen depth prepass for this toon shader. 
-        Pass
-        {
-            Name "DepthOnly"
-            Tags{"LightMode" = "DepthOnly"}
-
-            // more explict render state to avoid confusion
-            ZWrite On // the only goal of this pass is to write depth!
-            ZTest LEqual // early exit at Early-Z stage if possible            
-            ColorMask 0 // we don't care about color, we just want to write depth, ColorMask 0 will save some write bandwidth
-            Cull Back // support Cull[_Cull] requires "flip vertex normal" using VFACE in fragment shader, which is maybe beyond the scope of a simple tutorial shader
-
-            HLSLPROGRAM
-
-            // the only keywords we need in this pass = _UseAlphaClipping, which is already defined inside the HLSLINCLUDE block
-            // (so no need to write any multi_compile or shader_feature in this pass)
-
-            #pragma vertex VertexShaderWork
-            #pragma fragment BaseColorAlphaClipTest // we only need to do Clip(), no need color shading
-
-            // because Outline area should write to depth also, define "ToonShaderIsOutline" to inject outline related code into VertexShaderWork()
-            #define ToonShaderIsOutline
-
-            // all shader logic written inside this .hlsl, remember to write all #define BEFORE writing #include
-            #include "SimpleURPToonLitOutlineExample_Shared.hlsl"
-
-            ENDHLSL
-        }
+//        Pass
+//        {
+//            Name "ShadowCaster"
+//            Tags{"LightMode" = "ShadowCaster"}
+//
+//            // more explict render state to avoid confusion
+//            ZWrite On // the only goal of this pass is to write depth!
+//            ZTest LEqual // early exit at Early-Z stage if possible            
+//            ColorMask 0 // we don't care about color, we just want to write depth, ColorMask 0 will save some write bandwidth
+//            Cull Back // support Cull[_Cull] requires "flip vertex normal" using VFACE in fragment shader, which is maybe beyond the scope of a simple tutorial shader
+//
+//            HLSLPROGRAM
+//
+//            // the only keywords we need in this pass = _UseAlphaClipping, which is already defined inside the HLSLINCLUDE block
+//            // (so no need to write any multi_compile or shader_feature in this pass)
+//
+//            #pragma vertex VertexShaderWork
+//            #pragma fragment BaseColorAlphaClipTest // we only need to do Clip(), no need shading
+//
+//            // because it is a ShadowCaster pass, define "ToonShaderApplyShadowBiasFix" to inject "remove shadow mapping artifact" code into VertexShaderWork()
+//            #define ToonShaderApplyShadowBiasFix
+//
+//            // all shader logic written inside this .hlsl, remember to write all #define BEFORE writing #include
+//            #include "SimpleURPToonLitOutlineExample_Shared.hlsl"
+//
+//            ENDHLSL
+//        }
+//
+//        // DepthOnly pass. Used for rendering URP's offscreen depth prepass (you can search DepthOnlyPass.cs in URP package)
+//        // For example, when depth texture is on, we need to perform this offscreen depth prepass for this toon shader. 
+//        Pass
+//        {
+//            Name "DepthOnly"
+//            Tags{"LightMode" = "DepthOnly"}
+//
+//            // more explict render state to avoid confusion
+//            ZWrite On // the only goal of this pass is to write depth!
+//            ZTest LEqual // early exit at Early-Z stage if possible            
+//            ColorMask 0 // we don't care about color, we just want to write depth, ColorMask 0 will save some write bandwidth
+//            Cull Back // support Cull[_Cull] requires "flip vertex normal" using VFACE in fragment shader, which is maybe beyond the scope of a simple tutorial shader
+//
+//            HLSLPROGRAM
+//
+//            // the only keywords we need in this pass = _UseAlphaClipping, which is already defined inside the HLSLINCLUDE block
+//            // (so no need to write any multi_compile or shader_feature in this pass)
+//
+//            #pragma vertex VertexShaderWork
+//            #pragma fragment BaseColorAlphaClipTest // we only need to do Clip(), no need color shading
+//
+//            // because Outline area should write to depth also, define "ToonShaderIsOutline" to inject outline related code into VertexShaderWork()
+//            #define ToonShaderIsOutline
+//
+//            // all shader logic written inside this .hlsl, remember to write all #define BEFORE writing #include
+//            #include "SimpleURPToonLitOutlineExample_Shared.hlsl"
+//
+//            ENDHLSL
+//        }
         
 
         // Starting from version 10.0.x, URP can generate a normal texture called _CameraNormalsTexture. 

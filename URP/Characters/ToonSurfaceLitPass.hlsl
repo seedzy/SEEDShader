@@ -4,9 +4,9 @@
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
-#include "NiloOutlineUtil.hlsl"
-#include "NiloZOffset.hlsl"
-#include "NiloInvLerpRemap.hlsl"
+// #include "NiloOutlineUtil.hlsl"
+// #include "NiloZOffset.hlsl"
+// #include "NiloInvLerpRemap.hlsl"
 
 #include "ToonInputData.hlsl"
 #include "ToonLighting.hlsl"
@@ -23,7 +23,7 @@ struct a2v
 struct v2f
 {
     float2 uv                       : TEXCOORD0;
-    float4 positionWS               : TEXCOORD1; // xyz: positionWS, w: vertex fog factor
+    float3 positionWS               : TEXCOORD1; // xyz: positionWS, w: vertex fog factor
     half3 normalWS                  : TEXCOORD2;
     half4 fogFactorAndVertexLight   : TEXCOORD3;
     DECLARE_LIGHTMAP_OR_SH(lightmapUV, vertexSH, 4);
@@ -113,9 +113,12 @@ v2f VertexShaderWork(a2v input)
     // TRANSFORM_TEX is the same as the old shader library.
     output.uv = TRANSFORM_TEX(input.uv,_BaseMap);
 
+    output.positionWS = positionWS;
+
     // packing positionWS(xyz) & fog(w) into a vector4
     output.fogFactorAndVertexLight = half4(fogFactor, vertexLight);
     output.normalWS = vertexNormalInput.normalWS; //normlaized already by GetVertexNormalInputs(...)
+    OUTPUT_SH(output.normalWS.xyz, output.vertexSH);
 
     output.positionCS = TransformWorldToHClip(positionWS);
 
@@ -160,10 +163,10 @@ v2f VertexShaderWork(a2v input)
 /// <summary>
 /// 采样baseMap颜色
 /// </summary>
-half4 GetFinalBaseColor(v2f input)
-{
-    return tex2D(_BaseMap, input.uv) * _BaseColor;
-}
+// half4 GetFinalBaseColor(v2f input)
+// {
+//     return tex2D(_BaseMap, input.uv) * _BaseColor;
+// }
 
 /// <summary>
 /// 采样EmissionMap颜色
@@ -182,21 +185,21 @@ half3 GetFinalEmissionColor(v2f input)
 /// <summary>
 /// 采样OcclusionMap颜色,这个贴图主要是为了做出环境光遮蔽的效果
 /// </summary>
-half GetFinalOcculsion(v2f input)
-{
-    half result = 1;
-    if(_UseOcclusion)
-    {
-        half4 texValue = tex2D(_OcclusionMap, input.uv);
-        //指定mask使用的通道
-        half occlusionValue = dot(texValue, _OcclusionMapChannelMask);
-        occlusionValue = lerp(1, occlusionValue, _OcclusionStrength);
-        occlusionValue = invLerpClamp(_OcclusionRemapStart, _OcclusionRemapEnd, occlusionValue);
-        result = occlusionValue;
-    }
-
-    return result;
-}
+// half GetFinalOcculsion(v2f input)
+// {
+//     half result = 1;
+//     if(_UseOcclusion)
+//     {
+//         half4 texValue = tex2D(_OcclusionMap, input.uv);
+//         //指定mask使用的通道
+//         half occlusionValue = dot(texValue, _OcclusionMapChannelMask);
+//         occlusionValue = lerp(1, occlusionValue, _OcclusionStrength);
+//         occlusionValue = invLerpClamp(_OcclusionRemapStart, _OcclusionRemapEnd, occlusionValue);
+//         result = occlusionValue;
+//     }
+//
+//     return result;
+// }
 
 /// <summary>
 /// 采样SpecularMask,这个贴图主要是为了限制高光区域
@@ -221,15 +224,15 @@ half3 ConvertSurfaceColorToOutlineColor(half3 originalSurfaceColor)
 {
     return originalSurfaceColor * _OutlineColor;
 }
-half3 ApplyFog(half3 color, v2f input)
-{
-    half fogFactor = input.positionWSAndFogFactor.w;
-    // Mix the pixel color with fogColor. You can optionaly use MixFogColor to override the fogColor
-    // with a custom one.
-    color = MixFog(color, fogFactor);
-
-    return color;  
-}
+// half3 ApplyFog(half3 color, v2f input)
+// {
+//     half fogFactor = input.positionWSAndFogFactor.w;
+//     // Mix the pixel color with fogColor. You can optionaly use MixFogColor to override the fogColor
+//     // with a custom one.
+//     color = MixFog(color, fogFactor);
+//
+//     return color;  
+// }
 
 // only the .shader file will call this function by 
 // #pragma fragment ShadeFinalColor
@@ -241,11 +244,8 @@ half4 ShadeFinalColor(v2f input) : SV_TARGET
     
     InputData inputData;
     InitializeInputData(input, inputData);
-
-
-    Light mainLight = GetMainLight();
     
-    half3 finColor = ToonSurfaceShading();
+    half3 finColor = ToonSurfaceShading(surfaceData, inputData);
 
 
     //混合描边和贴图颜色
@@ -253,7 +253,7 @@ half4 ShadeFinalColor(v2f input) : SV_TARGET
     finColor = ConvertSurfaceColorToOutlineColor(finColor);
 #endif
 
-    finColor = ApplyFog(finColor, input);
+    //finColor = ApplyFog(finColor, input);
 
     return half4(finColor, surfaceData.alpha);
 }
@@ -261,10 +261,10 @@ half4 ShadeFinalColor(v2f input) : SV_TARGET
 //////////////////////////////////////////////////////////////////////////////////////////
 // fragment shared functions (for ShadowCaster pass & DepthOnly pass to use only)
 //////////////////////////////////////////////////////////////////////////////////////////
-void BaseColorAlphaClipTest(v2f input)
-{
-    AlphaTest(GetFinalBaseColor(input).a);
-}
+// void BaseColorAlphaClipTest(v2f input)
+// {
+//     AlphaTest(GetFinalBaseColor(input).a);
+// }
 
 
 

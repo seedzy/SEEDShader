@@ -2,6 +2,7 @@
 #define TOON_LIGHTING
 
 #include "ToonSurfaceData.hlsl"
+#include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
 //扁平化的间接光照，留作对比
 half3 ShadeGI(ToonSurfaceData surfaceData)
@@ -21,6 +22,29 @@ half3 ShadeGI(ToonSurfaceData surfaceData)
 half3 Directlight(ToonSurfaceData surfaceData, InputData inputData, Light light)
 {
     half NdotL = dot(inputData.normalWS, light.direction);
+    half3 halfNormal = normalize(light.direction + inputData.viewDirectionWS);
+
+    
+#ifndef _USE_GRADIENTMAP 
+    half litOrShadowMark = smoothstep(_CelShadeMidPoint-_CelShadeSoftness,_CelShadeMidPoint+_CelShadeSoftness, NdotL);
+    // light's shadow map
+    litOrShadowMark *= lerp(1,light.shadowAttenuation,_ReceiveShadowMappingAmount);
+    //shadow Color
+    half3 shadowColor = lerp(_ShadowMapColor,1, litOrShadowMark);
+
+    half distanceAttenuation = min(4,light.distanceAttenuation);
+    shadowColor *= light.distanceAttenuation;
+#else
+ 
+#endif
+    //lambertDiffuse
+    
+
+    //blinnPhongSpecular
+    half3 specularColor = _SpecularColor * pow(saturate(dot(inputData.normalWS, halfNormal)), _SpecularPower);
+    specularColor *= surfaceData.specularMask;
+
+    return light.color * (shadowColor + specularColor);
 }
 
 
@@ -28,9 +52,9 @@ half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData)
 {
     // Indirect lighting
     
-#ifdef _USE_NORMALSH
-    half3 Indirectlight = inputData.bakedGI * surfaceData.occlusion * surfaceData.albedo;
-#else
+ #ifdef _USE_NORMALSH
+     half3 Indirectlight = inputData.bakedGI * surfaceData.occlusion;
+ #else
     half3 Indirectlight = ShadeGI(surfaceData);
 #endif
 
@@ -41,7 +65,7 @@ half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData)
     Light mainLight = GetMainLight();
 
     float3 shadowTestPosWS = inputData.positionWS + mainLight.direction * (_ReceiveShadowMappingPosOffset + _IsFace);
-#ifdef _MAIN_LIGHT_SHADOWS
+//#ifdef _MAIN_LIGHT_SHADOWS
     // compute the shadow coords in the fragment shader now due to this change
     // https://forum.unity.com/threads/shadow-cascades-weird-since-7-2-0.828453/#post-5516425
 
@@ -52,10 +76,10 @@ half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData)
     float4 shadowCoord = TransformWorldToShadowCoord(shadowTestPosWS);
 
     mainLight.shadowAttenuation = MainLightRealtimeShadow(shadowCoord);
-#endif 
+//#endif 
 
     // Main light
-    half3 mainLightResult = ShadeSingleLight(surfaceData, lightingData, mainLight, false);
+    half3 directLight = Directlight(surfaceData, inputData, mainLight);
 
     //==============================================================================================
     // All additional lights
@@ -82,9 +106,11 @@ half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData)
     //==============================================================================================
 
     // emission
-    half3 emissionResult = ShadeEmission(surfaceData, lightingData);
+    //half3 emissionResult = ShadeEmission(surfaceData, lightingData);
 
-    return CompositeAllLightResults(indirectResult, mainLightResult, additionalLightSumResult, emissionResult, surfaceData, lightingData);
+    //return directLight * surfaceData.albedo;
+    return (Indirectlight + directLight) * surfaceData.albedo;
+    //return CompositeAllLightResults(indirectResult, mainLightResult, additionalLightSumResult, emissionResult, surfaceData, lightingData);
 }
 
 

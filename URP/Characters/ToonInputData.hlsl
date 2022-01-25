@@ -56,7 +56,7 @@ CBUFFER_START(UnityPerMaterial)
 CBUFFER_END
 
 
-TEXTURE2D(_BaseMap);  SAMPLER(_Sampler_BaseMap);
+TEXTURE2D(_BaseMap);  SAMPLER(sampler_BaseMap);
 
 sampler2D _EmissionMap;
 sampler2D _OcclusionMap;
@@ -81,7 +81,7 @@ void AlphaTest(half alpha)
 void InitializeSurfaceData(float2 uv, out ToonSurfaceData output)
 {
     // albedo & alpha
-    float4 baseColor = _BaseMap.Sample(_Sampler_BaseMap, uv);
+    float4 baseColor = _BaseMap.Sample(sampler_BaseMap, uv);
 
     AlphaTest(baseColor.a);// early exit if possible
 
