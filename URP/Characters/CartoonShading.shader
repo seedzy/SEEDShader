@@ -62,7 +62,7 @@ Shader "SEEDzy/URP/Character/CartoonPreview"
         _SpecularMapChannelMask("高光通道遮罩", Vector) = (1,0,0,0)
         
         [Header(Test)]
-        [Toggle(_USE_NORMALSH)]_TestSHLight("TestSHLight", float) = 0
+        [Toggle(_USE_NORMALSH)]_TestSHLight("Flattening IndirectLight Off", float) = 0
     }
     SubShader
     {       

@@ -19,7 +19,7 @@ half3 ShadeGI(ToonSurfaceData surfaceData)
     return averageSH * indirectOcclusion;
 }
 
-half3 Directlight(ToonSurfaceData surfaceData, InputData inputData, Light light)
+half3 DirectlightWithOutAlbedo(ToonSurfaceData surfaceData, InputData inputData, Light light)
 {
     half NdotL = dot(inputData.normalWS, light.direction);
     half3 halfNormal = normalize(light.direction + inputData.viewDirectionWS);
@@ -35,7 +35,7 @@ half3 Directlight(ToonSurfaceData surfaceData, InputData inputData, Light light)
     half distanceAttenuation = min(4,light.distanceAttenuation);
     shadowColor *= light.distanceAttenuation;
 #else
- 
+    
 #endif
     //lambertDiffuse
     
@@ -62,24 +62,22 @@ half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData)
     // It is shaded outside the light loop and it has a specific set of variables and shading path
     // so we can be as fast as possible in the case when there's only a single directional light
     // You can pass optionally a shadowCoord. If so, shadowAttenuation will be computed.
-    Light mainLight = GetMainLight();
+    // To ensure backward compatibility we have to avoid using shadowMask input, as it is not present in older shaders
+#if defined(SHADOWS_SHADOWMASK) && defined(LIGHTMAP_ON)
+    half4 shadowMask = inputData.shadowMask;
+#elif !defined (LIGHTMAP_ON)
+    half4 shadowMask = unity_ProbesOcclusion;
+#else
+    half4 shadowMask = half4(1, 1, 1, 1);
+#endif
+    
+    Light mainLight = GetMainLight(inputData.shadowCoord, inputData.positionWS, shadowMask);
 
-    float3 shadowTestPosWS = inputData.positionWS + mainLight.direction * (_ReceiveShadowMappingPosOffset + _IsFace);
-//#ifdef _MAIN_LIGHT_SHADOWS
-    // compute the shadow coords in the fragment shader now due to this change
-    // https://forum.unity.com/threads/shadow-cascades-weird-since-7-2-0.828453/#post-5516425
-
-    // _ReceiveShadowMappingPosOffset will control the offset the shadow comparsion position, 
-    // doing this is usually for hide ugly self shadow for shadow sensitive area like face
+    //float3 shadowTestPosWS = inputData.positionWS + mainLight.direction * (_ReceiveShadowMappingPosOffset + _IsFace);
     //https://www.bilibili.com/read/cv6436088/
 
-    float4 shadowCoord = TransformWorldToShadowCoord(shadowTestPosWS);
-
-    mainLight.shadowAttenuation = MainLightRealtimeShadow(shadowCoord);
-//#endif 
-
     // Main light
-    half3 directLight = Directlight(surfaceData, inputData, mainLight);
+    half3 directLight = DirectlightWithOutAlbedo(surfaceData, inputData, mainLight);
 
     //==============================================================================================
     // All additional lights
