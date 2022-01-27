@@ -40,6 +40,9 @@ CBUFFER_START(UnityPerMaterial)
     half3   _IndirectLightMinColor;
     half    _CelShadeMidPoint;
     half    _CelShadeSoftness;
+    half    _LightArea;
+    half    _RampMapLayer;
+    half4   _RampMapLayerSwitch;
 
     // shadow mapping
     half    _ReceiveShadowMappingAmount;
@@ -57,6 +60,8 @@ CBUFFER_END
 
 
 TEXTURE2D(_BaseMap);  SAMPLER(sampler_BaseMap);
+TEXTURE2D(_RampMap);  SAMPLER(sampler_RampMap);
+TEXTURE2D(_LightMap); SAMPLER(sampler_LightMap);
 
 sampler2D _EmissionMap;
 sampler2D _OcclusionMap;
@@ -85,7 +90,7 @@ void InitializeSurfaceData(float2 uv, out ToonSurfaceData output)
 
     AlphaTest(baseColor.a);// early exit if possible
 
-    
+    float4 lightMap = _LightMap.Sample(sampler_LightMap, uv);
     // // emission
     // output.emission = GetFinalEmissionColor(input);
     //
@@ -99,7 +104,7 @@ void InitializeSurfaceData(float2 uv, out ToonSurfaceData output)
     output.alpha = baseColor.a;
     output.emission = half3(0,0,0);
     output.occlusion = half3(1,1,1);
-    output.specularMask = half3(0,0,0);
+    output.lightMap = lightMap;
 }
 
 #endif

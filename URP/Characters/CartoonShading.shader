@@ -33,11 +33,19 @@ Shader "SEEDzy/URP/Character/CartoonPreview"
 //        _OcclusionRemapEnd("_OcclusionRemapEnd", Range(0,1)) = 1
 
         [Header(Lighting)]
+        _LightMap("CharacterLightMap", 2D) = "White" {}
         _IndirectLightMinColor("_IndirectLightMinColor", Color) = (0.1,0.1,0.1,1) // can prevent completely black if lightprobe not baked
         _IndirectLightMultiplier("_IndirectLightMultiplier没用", Range(0,1)) = 1
         _DirectLightMultiplier("_DirectLightMultiplier没用", Range(0,1)) = 1
         _CelShadeMidPoint("明暗分界", Range(-1,1)) = -0.5
         _CelShadeSoftness("明暗柔和度", Range(0,1)) = 0.05
+        [Space]
+        [Toggle(_USE_RAMPMAP)]_useRampMap("Use Ramp Map", float) = 1
+        _RampMap("ShadowRampMap", 2D) =  "white" {}
+        _LightArea("LightArea", range(0,1)) = 0.5
+        _RampMapLayer("RampMapLayer", float) = 0.75
+        _RampMapLayerSwitch("RampMapLayerSwitch", vector) = (0.00,0.00,0.00,0.00)
+        [Space]
         _MainLightIgnoreCelShade("_MainLightIgnoreCelShade没用", Range(0,1)) = 0
         _AdditionalLightIgnoreCelShade("_AdditionalLightIgnoreCelShade没用", Range(0,1)) = 0.9
 
@@ -102,7 +110,7 @@ Shader "SEEDzy/URP/Character/CartoonPreview"
             HLSLPROGRAM
 
             #pragma shader_feature_local_fragment _USE_NORMALSH
-            #pragma shader_feature_local_fragment _USE_GRADIENTMAP 
+            #pragma shader_feature_local_fragment _USE_RAMPMAP 
             
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS_CASCADE

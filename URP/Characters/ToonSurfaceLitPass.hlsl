@@ -23,7 +23,7 @@ struct a2v
 struct v2f
 {
     float2 uv                       : TEXCOORD0;
-    float3 positionWS               : TEXCOORD1; // xyz: positionWS, w: vertex fog factor
+    float4 positionWSWithNdotL      : TEXCOORD1; // xyz: positionWS, w: vertex fog factor
     half3 normalWS                  : TEXCOORD2;
     half4 fogFactorAndVertexLight   : TEXCOORD3;
     DECLARE_LIGHTMAP_OR_SH(lightmapUV, vertexSH, 4);
@@ -54,9 +54,9 @@ void InitializeInputData(v2f input, out InputData inputData)
 {
     inputData = (InputData)0;
 
-    inputData.positionWS = input.positionWS;
+    inputData.positionWS = input.positionWSWithNdotL.xyz;
 
-    inputData.viewDirectionWS = SafeNormalize(_WorldSpaceCameraPos - input.positionWS);
+    inputData.viewDirectionWS = SafeNormalize(_WorldSpaceCameraPos - input.positionWSWithNdotL.xyz);
     #if defined(_NORMALMAP) || defined(_DETAIL)
     float sgn = input.tangentWS.w;      // should be either +1 or -1
     float3 bitangent = sgn * cross(input.normalWS.xyz, input.tangentWS.xyz);
@@ -110,10 +110,12 @@ v2f VertexShaderWork(a2v input)
     half3 vertexLight = VertexLighting(vertexInput.positionWS, vertexNormalInput.normalWS);
     half fogFactor = ComputeFogFactor(vertexInput.positionCS.z);
 
+    float NdotL = dot(vertexNormalInput.normalWS, GetMainLight().direction) * 0.5 + 0.5;
+
     // TRANSFORM_TEX is the same as the old shader library.
     output.uv = TRANSFORM_TEX(input.uv,_BaseMap);
-
-    output.positionWS = positionWS;
+    //问就是省
+    output.positionWSWithNdotL = float4(positionWS, NdotL);
 
     // packing positionWS(xyz) & fog(w) into a vector4
     output.fogFactorAndVertexLight = half4(fogFactor, vertexLight);
@@ -245,7 +247,7 @@ half4 ShadeFinalColor(v2f input) : SV_TARGET
     InputData inputData;
     InitializeInputData(input, inputData);
     
-    half3 finColor = ToonSurfaceShading(surfaceData, inputData);
+    half3 finColor = ToonSurfaceShading(surfaceData, inputData, input.positionWSWithNdotL.w);
 
 
     //混合描边和贴图颜色

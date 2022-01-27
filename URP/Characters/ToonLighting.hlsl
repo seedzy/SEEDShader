@@ -19,36 +19,51 @@ half3 ShadeGI(ToonSurfaceData surfaceData)
     return averageSH * indirectOcclusion;
 }
 
-half3 DirectlightWithOutAlbedo(ToonSurfaceData surfaceData, InputData inputData, Light light)
+half3 DirectlightWithOutAlbedo(ToonSurfaceData surfaceData, InputData inputData, Light light, half NdotL)
 {
-    half NdotL = dot(inputData.normalWS, light.direction);
+    //half NdotL = dot(inputData.normalWS, light.direction);
     half3 halfNormal = normalize(light.direction + inputData.viewDirectionWS);
 
+    //lambertDiffuse    
+// #ifndef _USE_RAMPMAP
+//     half litOrShadowMark = smoothstep(_CelShadeMidPoint-_CelShadeSoftness,_CelShadeMidPoint+_CelShadeSoftness, NdotL);
+//     // light's shadow map
+//     litOrShadowMark *= lerp(1, light.shadowAttenuation, _ReceiveShadowMappingAmount);
+//     //shadow Color
+//     half3 shadowColor = lerp(_ShadowMapColor, 1, litOrShadowMark);
+//
+//     half distanceAttenuation = min(4, light.distanceAttenuation);
+//     shadowColor *= light.distanceAttenuation;
+// #else
     
-#ifndef _USE_GRADIENTMAP 
-    half litOrShadowMark = smoothstep(_CelShadeMidPoint-_CelShadeSoftness,_CelShadeMidPoint+_CelShadeSoftness, NdotL);
-    // light's shadow map
-    litOrShadowMark *= lerp(1,light.shadowAttenuation,_ReceiveShadowMappingAmount);
-    //shadow Color
-    half3 shadowColor = lerp(_ShadowMapColor,1, litOrShadowMark);
-
-    half distanceAttenuation = min(4,light.distanceAttenuation);
-    shadowColor *= light.distanceAttenuation;
-#else
+    //half shadowAttenuation = 0.5 * NdotL + 0.5;
+    half shadowAttenuation = (NdotL + 0.5) * 0.5;
+    if(shadowAttenuation < _LightArea)
+    {
+        //shadowAttenuation = 1 - (-shadowAttenuation + _LightArea) / _LightArea;
+        shadowAttenuation /= _LightArea;
+    }
+    else
+    {
+        shadowAttenuation = 1;
+    }
+    //shadowAttenuation = lerp(shadowAttenuation /= _LightArea, 1, step(_LightArea, shadowAttenuation));
+    //接受投影，先这样吧，目前效果最能接受的办法了
+    half3 shadowColor = _RampMap.Sample(sampler_RampMap, half2(shadowAttenuation, _RampMapLayer));
+    half3 lightShadowColor = _RampMap.Sample(sampler_RampMap, half2(0, _RampMapLayer));
+    shadowColor = lerp(lightShadowColor, shadowColor, light.shadowAttenuation);
     
-#endif
-    //lambertDiffuse
-    
+//#endif
 
     //blinnPhongSpecular
     half3 specularColor = _SpecularColor * pow(saturate(dot(inputData.normalWS, halfNormal)), _SpecularPower);
-    specularColor *= surfaceData.specularMask;
+    //specularColor *= surfaceData.specularMask;
 
     return light.color * (shadowColor + specularColor);
 }
 
 
-half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData)
+half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData, half NdotL)
 {
     // Indirect lighting
     
@@ -77,7 +92,7 @@ half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData)
     //https://www.bilibili.com/read/cv6436088/
 
     // Main light
-    half3 directLight = DirectlightWithOutAlbedo(surfaceData, inputData, mainLight);
+    half3 directLight = DirectlightWithOutAlbedo(surfaceData, inputData, mainLight, NdotL);
 
     //==============================================================================================
     // All additional lights
@@ -106,8 +121,8 @@ half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData)
     // emission
     //half3 emissionResult = ShadeEmission(surfaceData, lightingData);
 
-    //return directLight * surfaceData.albedo;
-    return (Indirectlight + directLight) * surfaceData.albedo;
+    return directLight * surfaceData.albedo;
+    return saturate((Indirectlight + directLight) * surfaceData.albedo);
     //return CompositeAllLightResults(indirectResult, mainLightResult, additionalLightSumResult, emissionResult, surfaceData, lightingData);
 }
 

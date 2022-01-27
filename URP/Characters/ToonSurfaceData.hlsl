@@ -8,7 +8,8 @@ struct  ToonSurfaceData
     half    alpha;
     half3   emission;
     half    occlusion;
-    half    specularMask;
+    //specularMask, shadowWeight, specular?, rampMask
+    half4   lightMap;
 };
 
 #endif

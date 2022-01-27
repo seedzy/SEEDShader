@@ -22,7 +22,7 @@ Material:
   m_PrefabAsset: {fileID: 0}
   m_Name: New Material
   m_Shader: {fileID: 4800000, guid: 1f8ebaa067605524584c46a7e876d4a7, type: 3}
-  m_ShaderKeywords: _USESPECULARMASK_ON
+  m_ShaderKeywords: _USE_RAMPMAP
   m_LightmapFlags: 4
   m_EnableInstancingVariants: 0
   m_DoubleSidedGI: 0
@@ -33,7 +33,7 @@ Material:
     serializedVersion: 3
     m_TexEnvs:
     - _BaseMap:
-        m_Texture: {fileID: 2800000, guid: 67378041293cf4d48b928a6101f7543a, type: 3}
+        m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _BumpMap:
@@ -56,6 +56,10 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _LightMap:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _MainTex:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -74,6 +78,10 @@ Material:
         m_Offset: {x: 0, y: 0}
     - _ParallaxMap:
         m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
+    - _RampMap:
+        m_Texture: {fileID: 2800000, guid: 045c25a5d581db24195481081601734a, type: 3}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
     - _SpecGlossMap:
@@ -118,6 +126,7 @@ Material:
     - _GlossyReflections: 0
     - _IndirectLightMultiplier: 1
     - _IsFace: 0
+    - _LightArea: 0.5
     - _MainLightIgnoreCelShade: 0
     - _Metallic: 0
     - _OcclusionRemapEnd: 1
@@ -129,22 +138,24 @@ Material:
     - _OutlineZOffsetMaskRemapStart: 0
     - _Parallax: 0.005
     - _QueueOffset: 0
+    - _RampMapLayer: 0.85
     - _ReceiveShadowMappingAmount: 1
     - _ReceiveShadowMappingPosOffset: 0
     - _ReceiveShadows: 1
     - _Smoothness: 0.5
     - _SmoothnessTextureChannel: 0
     - _SpecularHighlights: 1
-    - _SpecularPower: 1
+    - _SpecularPower: 10
     - _SrcBlend: 1
     - _Surface: 0
     - _TestSHLight: 0
     - _UseAlphaClipping: 0
     - _UseEmission: 0
     - _UseOcclusion: 0
-    - _UseSpecularMask: 1
+    - _UseSpecularMask: 0
     - _WorkflowMode: 1
     - _ZWrite: 1
+    - _useRampMap: 1
     m_Colors:
     - _BaseColor: {r: 1, g: 1, b: 1, a: 1}
     - _Color: {r: 1, g: 1, b: 1, a: 1}
@@ -153,6 +164,7 @@ Material:
     - _IndirectLightMinColor: {r: 0.09999997, g: 0.09999997, b: 0.09999997, a: 1}
     - _OcclusionMapChannelMask: {r: 1, g: 0, b: 0, a: 0}
     - _OutlineColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
+    - _RampMapLayerSwitch: {r: 0, g: 0, b: 0, a: 0}
     - _ShadowMapColor: {r: 0.8055021, g: 0.76100624, b: 1, a: 1}
     - _SpecColor: {r: 0.19999996, g: 0.19999996, b: 0.19999996, a: 1}
     - _SpecularColor: {r: 1, g: 1, b: 1, a: 1}
