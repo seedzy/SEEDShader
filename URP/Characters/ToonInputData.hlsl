@@ -41,7 +41,6 @@ CBUFFER_START(UnityPerMaterial)
     half    _CelShadeMidPoint;
     half    _CelShadeSoftness;
     half    _LightArea;
-    half    _RampMapLayer;
     half4   _RampMapLayerSwitch;
 
     // shadow mapping
@@ -90,7 +89,7 @@ void InitializeSurfaceData(float2 uv, out ToonSurfaceData output)
 
     AlphaTest(baseColor.a);// early exit if possible
 
-    float4 lightMap = _LightMap.Sample(sampler_LightMap, uv);
+    half4 lightMap = _LightMap.Sample(sampler_LightMap, uv);
     // // emission
     // output.emission = GetFinalEmissionColor(input);
     //

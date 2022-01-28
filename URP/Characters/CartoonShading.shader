@@ -43,7 +43,6 @@ Shader "SEEDzy/URP/Character/CartoonPreview"
         [Toggle(_USE_RAMPMAP)]_useRampMap("Use Ramp Map", float) = 1
         _RampMap("ShadowRampMap", 2D) =  "white" {}
         _LightArea("LightArea", range(0,1)) = 0.5
-        _RampMapLayer("RampMapLayer", float) = 0.75
         _RampMapLayerSwitch("RampMapLayerSwitch", vector) = (0.00,0.00,0.00,0.00)
         [Space]
         _MainLightIgnoreCelShade("_MainLightIgnoreCelShade没用", Range(0,1)) = 0
@@ -66,9 +65,7 @@ Shader "SEEDzy/URP/Character/CartoonPreview"
         [Toggle]_UseSpecularMask("_SpecularMask (on/off Specular completely)", Float) = 0
         _SpecularPower("高光强度", Range(0,10)) = 1
         [HDR]_SpecularColor("高光颜色", Color) = (1,1,1,1)
-        [NoScaleOffset]_SpecularMap("高光遮罩", 2D) = "white"{}
-        _SpecularMapChannelMask("高光通道遮罩", Vector) = (1,0,0,0)
-        
+
         [Header(Test)]
         [Toggle(_USE_NORMALSH)]_TestSHLight("Flattening IndirectLight Off", float) = 0
     }

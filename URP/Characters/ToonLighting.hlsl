@@ -19,22 +19,51 @@ half3 ShadeGI(ToonSurfaceData surfaceData)
     return averageSH * indirectOcclusion;
 }
 
+/// <summary>
+/// 这逻辑。。。。晕
+/// </summary>
+half GetYSRampMapLayer(half rampMask, half4 rampMapLayerSwitch)
+{
+    half4 condition1 = rampMask.xxxx >= half4(0.80, 0.60, 0.40, 0.20);
+    half3 condition2  = rampMask.xxx     <     half3(0.80, 0.60, 0.40);
+    
+    half finalLayer = lerp(1         , 2, condition1.x                * rampMapLayerSwitch.x);
+         finalLayer = lerp(finalLayer, 5, condition1.y * condition2.x * rampMapLayerSwitch.y);
+         finalLayer = lerp(finalLayer, 3, condition1.z * condition2.y * rampMapLayerSwitch.z);
+         finalLayer = lerp(finalLayer, 4, condition1.w * condition2.z * rampMapLayerSwitch.w);
+
+    return finalLayer;
+}
+
 half3 DirectlightWithOutAlbedo(ToonSurfaceData surfaceData, InputData inputData, Light light, half NdotL)
 {
     //half NdotL = dot(inputData.normalWS, light.direction);
     half3 halfNormal = normalize(light.direction + inputData.viewDirectionWS);
 
     //lambertDiffuse    
-// #ifndef _USE_RAMPMAP
-//     half litOrShadowMark = smoothstep(_CelShadeMidPoint-_CelShadeSoftness,_CelShadeMidPoint+_CelShadeSoftness, NdotL);
-//     // light's shadow map
-//     litOrShadowMark *= lerp(1, light.shadowAttenuation, _ReceiveShadowMappingAmount);
-//     //shadow Color
-//     half3 shadowColor = lerp(_ShadowMapColor, 1, litOrShadowMark);
-//
-//     half distanceAttenuation = min(4, light.distanceAttenuation);
-//     shadowColor *= light.distanceAttenuation;
-// #else
+#ifndef _USE_RAMPMAP
+    half litOrShadowMark = smoothstep(_CelShadeMidPoint-_CelShadeSoftness,_CelShadeMidPoint+_CelShadeSoftness, NdotL);
+    // light's shadow map
+    litOrShadowMark *= lerp(1, light.shadowAttenuation, _ReceiveShadowMappingAmount);
+    //shadow Color
+    half3 shadowColor = lerp(_ShadowMapColor, 1, litOrShadowMark);
+
+    half distanceAttenuation = min(4, light.distanceAttenuation);
+    shadowColor *= light.distanceAttenuation;
+#else
+
+    half rampLayer = GetYSRampMapLayer(surfaceData.lightMap.a, _RampMapLayerSwitch);
+    half rampV;
+
+    float time = 1;
+    if(time)
+    {
+        //逻辑还算简单，-1是为了把坐标起点映射到0
+        //*0.1是为了把坐标缩放到0 ~ 1
+        //+0.05是为了是采样点位于ramp中部
+        //1-其实是因为uv和ramp顺序是反的，也可以直接反转纹理
+        rampV = 1 - ((rampLayer - 1) * 0.1 + 0.05);
+    }
     
     //half shadowAttenuation = 0.5 * NdotL + 0.5;
     half shadowAttenuation = (NdotL + 0.5) * 0.5;
@@ -49,16 +78,17 @@ half3 DirectlightWithOutAlbedo(ToonSurfaceData surfaceData, InputData inputData,
     }
     //shadowAttenuation = lerp(shadowAttenuation /= _LightArea, 1, step(_LightArea, shadowAttenuation));
     //接受投影，先这样吧，目前效果最能接受的办法了
-    half3 shadowColor = _RampMap.Sample(sampler_RampMap, half2(shadowAttenuation, _RampMapLayer));
-    half3 lightShadowColor = _RampMap.Sample(sampler_RampMap, half2(0, _RampMapLayer));
+    half3 shadowColor = _RampMap.Sample(sampler_RampMap, half2(shadowAttenuation, rampV));
+    half3 lightShadowColor = _RampMap.Sample(sampler_RampMap, half2(0, rampV));
     shadowColor = lerp(lightShadowColor, shadowColor, light.shadowAttenuation);
     
-//#endif
+#endif
 
     //blinnPhongSpecular
     half3 specularColor = _SpecularColor * pow(saturate(dot(inputData.normalWS, halfNormal)), _SpecularPower);
-    //specularColor *= surfaceData.specularMask;
+    specularColor *= surfaceData.lightMap.r;
 
+    //return light.color * (shadowColor);
     return light.color * (shadowColor + specularColor);
 }
 
@@ -99,29 +129,29 @@ half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData, half 
 
     half3 additionalLightSumResult = 0;
 
-#ifdef _ADDITIONAL_LIGHTS
-    // Returns the amount of lights affecting the object being renderer.
-    // These lights are culled per-object in the forward renderer of URP.
-    int additionalLightsCount = GetAdditionalLightsCount();
-    for (int i = 0; i < additionalLightsCount; ++i)
-    {
-        // Similar to GetMainLight(), but it takes a for-loop index. This figures out the
-        // per-object light index and samples the light buffer accordingly to initialized the
-        // Light struct. If ADDITIONAL_LIGHT_CALCULATE_SHADOWS is defined it will also compute shadows.
-        int perObjectLightIndex = GetPerObjectLightIndex(i);
-        Light light = GetAdditionalPerObjectLight(perObjectLightIndex, lightingData.positionWS); // use original positionWS for lighting
-        light.shadowAttenuation = AdditionalLightRealtimeShadow(perObjectLightIndex, shadowTestPosWS); // use offseted positionWS for shadow test
-
-        // Different function used to shade additional lights.
-        additionalLightSumResult += ShadeSingleLight(surfaceData, lightingData, light, true);
-    }
-#endif
+// #ifdef _ADDITIONAL_LIGHTS
+//     // Returns the amount of lights affecting the object being renderer.
+//     // These lights are culled per-object in the forward renderer of URP.
+//     int additionalLightsCount = GetAdditionalLightsCount();
+//     for (int i = 0; i < additionalLightsCount; ++i)
+//     {
+//         // Similar to GetMainLight(), but it takes a for-loop index. This figures out the
+//         // per-object light index and samples the light buffer accordingly to initialized the
+//         // Light struct. If ADDITIONAL_LIGHT_CALCULATE_SHADOWS is defined it will also compute shadows.
+//         int perObjectLightIndex = GetPerObjectLightIndex(i);
+//         Light light = GetAdditionalPerObjectLight(perObjectLightIndex, lightingData.positionWS); // use original positionWS for lighting
+//         light.shadowAttenuation = AdditionalLightRealtimeShadow(perObjectLightIndex, shadowTestPosWS); // use offseted positionWS for shadow test
+//
+//         // Different function used to shade additional lights.
+//         additionalLightSumResult += ShadeSingleLight(surfaceData, lightingData, light, true);
+//     }
+// #endif
     //==============================================================================================
 
     // emission
     //half3 emissionResult = ShadeEmission(surfaceData, lightingData);
 
-    return directLight * surfaceData.albedo;
+    //return directLight * surfaceData.albedo;
     return saturate((Indirectlight + directLight) * surfaceData.albedo);
     //return CompositeAllLightResults(indirectResult, mainLightResult, additionalLightSumResult, emissionResult, surfaceData, lightingData);
 }

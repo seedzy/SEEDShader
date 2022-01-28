@@ -256,7 +256,6 @@ half4 ShadeFinalColor(v2f input) : SV_TARGET
 #endif
 
     //finColor = ApplyFog(finColor, input);
-
     return half4(finColor, surfaceData.alpha);
 }
 
