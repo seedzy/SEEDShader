@@ -39,8 +39,8 @@ half GetYSRampMapLayer(half rampMask, half4 rampMapLayerSwitch)
 
 half3 DirectlightWithOutAlbedo(ToonSurfaceData surfaceData, InputData inputData, Light light, half NdotL)
 {
-    //half NdotL = dot(inputData.normalWS, light.direction);
-    half3 halfNormal = normalize(light.direction + inputData.viewDirectionWS);
+    //half ndotL = dot(inputData.normalWS, light.direction);
+    half3 halfNormal = normalize(light.direction + inputData.viewDirectionWS);  
 
     //lambertDiffuse    
 #ifndef _USE_RAMPMAP
@@ -70,12 +70,20 @@ half3 DirectlightWithOutAlbedo(ToonSurfaceData surfaceData, InputData inputData,
         //1-其实是因为uv和ramp顺序是反的，也可以直接反转纹理
         rampV = 1 - ((rampLayer - 1) * 0.1 + 0.05);
     }
-    
+
+    half shadowWeight = surfaceData.lightMap.g;
     //half shadowAttenuation = 0.5 * NdotL + 0.5;
     half shadowAttenuation = (NdotL + 0.5) * 0.5;
+    //就这两小步好像确实没必要lerpstep的样子
+    // if(shadowWeight > 0.95)
+    //     shadowAttenuation = 1;a
+    // if(shadowWeight < 0.05)
+    //     shadowAttenuation = 0;
+    
     if(shadowAttenuation < _LightArea)
     {
-        //原公式 ：shadowAttenuation = 1 - (-shadowAttenuation + _LightArea) / _LightArea;
+        //原公式 ：
+        shadowAttenuation = 1 - min((-shadowAttenuation + _LightArea) / _LightArea / 0.3, 1);
         shadowAttenuation /= _LightArea;
     }
     else
@@ -94,7 +102,7 @@ half3 DirectlightWithOutAlbedo(ToonSurfaceData surfaceData, InputData inputData,
     half3 specularColor = _SpecularColor * pow(saturate(dot(inputData.normalWS, halfNormal)), _SpecularPower);
     specularColor *= surfaceData.lightMap.r;
 
-    //return light.color * (shadowColor);
+    return light.color * (shadowColor);
     return light.color * (shadowColor + specularColor);
 }
 
@@ -157,7 +165,7 @@ half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData, half 
     // emission
     //half3 emissionResult = ShadeEmission(surfaceData, lightingData);
 
-    //return directLight * surfaceData.albedo;
+    return directLight * surfaceData.albedo;
     return saturate((Indirectlight + directLight) * surfaceData.albedo);
     //return CompositeAllLightResults(indirectResult, mainLightResult, additionalLightSumResult, emissionResult, surfaceData, lightingData);
 }
