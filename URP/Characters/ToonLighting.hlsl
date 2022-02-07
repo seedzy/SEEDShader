@@ -79,22 +79,25 @@ half3 DirectlightWithOutAlbedo(ToonSurfaceData surfaceData, InputData inputData,
     //     shadowAttenuation = 1;a
     // if(shadowWeight < 0.05)
     //     shadowAttenuation = 0;
-    
+
+    half3 rampColor;
     if(shadowAttenuation < _LightArea)
     {
         //原公式 ：
-        shadowAttenuation = 1 - min((-shadowAttenuation + _LightArea) / _LightArea / 0.3, 1);
+        //shadowAttenuation = 1 - min((-shadowAttenuation + _LightArea) / _LightArea, 1);
         shadowAttenuation /= _LightArea;
+        rampColor = _RampMap.Sample(sampler_RampMap, half2(shadowAttenuation, rampV));
     }
     else
     { 
-        shadowAttenuation = 1;
+        //shadowAttenuation = 1;
+        rampColor = 1;
     }
     //shadowAttenuation = lerp(shadowAttenuation /= _LightArea, 1, step(_LightArea, shadowAttenuation));
     //接受投影，先这样吧，目前效果最能接受的办法了
-    half3 shadowColor = _RampMap.Sample(sampler_RampMap, half2(shadowAttenuation, rampV));
+    //half3 shadowColor = _RampMap.Sample(sampler_RampMap, half2(shadowAttenuation, rampV));
     half3 lightShadowColor = _RampMap.Sample(sampler_RampMap, half2(0, rampV));
-    shadowColor = lerp(lightShadowColor, shadowColor, light.shadowAttenuation);
+    half3 shadowColor = lerp(lightShadowColor, rampColor, light.shadowAttenuation);
     
 #endif
 
