@@ -4,6 +4,8 @@
 #include "ToonSurfaceData.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
+#define SKIN_RAMP_LAYER 1
+
 //扁平化的间接光照，留作对比
 half3 ShadeGI(ToonSurfaceData surfaceData)
 {
@@ -51,8 +53,12 @@ half3 DirectlightWithOutAlbedo(ToonSurfaceData surfaceData, InputData inputData,
     half distanceAttenuation = min(4, light.distanceAttenuation);
     shadowColor *= light.distanceAttenuation;
 #else
-
+    #ifdef _ISFACE
+    half rampLayer = GetYSRampMapLayer(SKIN_RAMP_LAYER, _RampMapLayerSwitch);
+    #else
     half rampLayer = GetYSRampMapLayer(surfaceData.lightMap.a, _RampMapLayerSwitch);
+    #endif
+    
     half rampV;
 
     float time = 1;
@@ -69,11 +75,11 @@ half3 DirectlightWithOutAlbedo(ToonSurfaceData surfaceData, InputData inputData,
     half shadowAttenuation = (NdotL + 0.5) * 0.5;
     if(shadowAttenuation < _LightArea)
     {
-        //shadowAttenuation = 1 - (-shadowAttenuation + _LightArea) / _LightArea;
+        //原公式 ：shadowAttenuation = 1 - (-shadowAttenuation + _LightArea) / _LightArea;
         shadowAttenuation /= _LightArea;
     }
     else
-    {
+    { 
         shadowAttenuation = 1;
     }
     //shadowAttenuation = lerp(shadowAttenuation /= _LightArea, 1, step(_LightArea, shadowAttenuation));

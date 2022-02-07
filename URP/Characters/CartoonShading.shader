@@ -3,7 +3,7 @@ Shader "SEEDzy/URP/Character/CartoonPreview"
     Properties
     {
 //        [Header(High Level Setting)]
-//        [ToggleUI]_IsFace("Is Face? (please turn on if this is a face material)", Float) = 0
+        [Toggle(_IS_FACE)]_IsFace("Is Face? (please turn on if this is a face material)", Float) = 0
 
         // all properties will try to follow URP Lit shader's naming convention
         // so switching your URP lit material's shader to this toon lit shader will preserve most of the original properties if defined in this shader
@@ -108,6 +108,7 @@ Shader "SEEDzy/URP/Character/CartoonPreview"
 
             #pragma shader_feature_local_fragment _USE_NORMALSH
             #pragma shader_feature_local_fragment _USE_RAMPMAP 
+            #pragma shader_feature_local_fragment _IS_FACE 
             
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS_CASCADE
