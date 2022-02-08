@@ -39,12 +39,12 @@ half GetYSRampMapLayer(half rampMask, half4 rampMapLayerSwitch)
 
 half3 DirectlightWithOutAlbedo(ToonSurfaceData surfaceData, InputData inputData, Light light, half NdotL)
 {
-    //half ndotL = dot(inputData.normalWS, light.direction);
+    half ndotL = dot(inputData.normalWS, light.direction) * 0.5 + 0.5;
     half3 halfNormal = normalize(light.direction + inputData.viewDirectionWS);  
 
     //lambertDiffuse    
 #ifndef _USE_RAMPMAP
-    half litOrShadowMark = smoothstep(_CelShadeMidPoint-_CelShadeSoftness,_CelShadeMidPoint+_CelShadeSoftness, NdotL);
+    half litOrShadowMark = smoothstep(_CelShadeMidPoint-_CelShadeSoftness,_CelShadeMidPoint+_CelShadeSoftness, ndotL);
     // light's shadow map
     litOrShadowMark *= lerp(1, light.shadowAttenuation, _ReceiveShadowMappingAmount);
     //shadow Color
@@ -73,12 +73,12 @@ half3 DirectlightWithOutAlbedo(ToonSurfaceData surfaceData, InputData inputData,
 
     half shadowWeight = surfaceData.lightMap.g;
     //half shadowAttenuation = 0.5 * NdotL + 0.5;
-    half shadowAttenuation = (NdotL + 0.5) * 0.5;
+    half shadowAttenuation = (ndotL + shadowWeight) * 0.5;
     //就这两小步好像确实没必要lerpstep的样子
-    // if(shadowWeight > 0.95)
-    //     shadowAttenuation = 1;
-    // if(shadowWeight < 0.05)
-    //     shadowAttenuation = 0;
+    if(shadowWeight > 0.95)
+        shadowAttenuation = 1;
+    if(shadowWeight < 0.05)
+        shadowAttenuation = 0;
 
     half3 rampColor;
     if(shadowAttenuation < _LightArea)
