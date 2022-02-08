@@ -16,6 +16,7 @@ struct a2v
     float3 positionOS   : POSITION;
     half3 normalOS      : NORMAL;
     half4 tangentOS     : TANGENT;
+    half4 vertexColor   : COLOR;
     float2 uv           : TEXCOORD0;
 };
 
@@ -27,6 +28,7 @@ struct v2f
     half3 normalWS                  : TEXCOORD2;
     half4 fogFactorAndVertexLight   : TEXCOORD3;
     DECLARE_LIGHTMAP_OR_SH(lightmapUV, vertexSH, 4);
+    half4 vertexColor               : TEXCOORD5;
     float4 positionCS               : SV_POSITION;
 };
 
@@ -123,6 +125,8 @@ v2f VertexShaderWork(a2v input)
     OUTPUT_SH(output.normalWS.xyz, output.vertexSH);
 
     output.positionCS = TransformWorldToHClip(positionWS);
+
+    output.vertexColor = input.vertexColor;
 
 // #ifdef ToonShaderIsOutline
 //     // [Read ZOffset mask texture]
@@ -242,7 +246,7 @@ half4 ShadeFinalColor(v2f input) : SV_TARGET
 {
 
     ToonSurfaceData surfaceData;
-    InitializeSurfaceData(input.uv, surfaceData);
+    InitializeSurfaceData(input.uv, input.vertexColor, surfaceData);
     
     InputData inputData;
     InitializeInputData(input, inputData);

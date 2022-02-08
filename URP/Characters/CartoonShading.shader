@@ -40,7 +40,9 @@ Shader "SEEDzy/URP/Character/CartoonPreview"
         _CelShadeMidPoint("明暗分界", Range(-1,1)) = -0.5
         _CelShadeSoftness("明暗柔和度", Range(0,1)) = 0.05
         [Space]
-        [Toggle(_USE_RAMPMAP)]_useRampMap("Use Ramp Map", float) = 1
+        [Header(ShadowRamp)]
+        [Toggle(_USE_RAMPMAP)]_UseRampMap("Use Ramp Map", float) = 1
+        [Toggle]_UseVertexRampWidth("UseVertexRampWidth", float) = 1
         _RampMap("ShadowRampMap", 2D) =  "white" {}
         _LightArea("LightArea", range(0,1)) = 0.5
         _RampMapLayerSwitch("RampMapLayerSwitch", vector) = (0.00,0.00,0.00,0.00)

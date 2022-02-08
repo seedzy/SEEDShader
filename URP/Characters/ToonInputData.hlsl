@@ -42,6 +42,7 @@ CBUFFER_START(UnityPerMaterial)
     half    _CelShadeSoftness;
     half    _LightArea;
     half4   _RampMapLayerSwitch;
+    half    _UseVertexRampWidth;
 
     // shadow mapping
     half    _ReceiveShadowMappingAmount;
@@ -82,7 +83,7 @@ void AlphaTest(half alpha)
 /// <summary>
 /// 初始化表面数据
 /// </summary>
-void InitializeSurfaceData(float2 uv, out ToonSurfaceData output)
+void InitializeSurfaceData(float2 uv, half4 vertexColor, out ToonSurfaceData output)
 {
     // albedo & alpha
     float4 baseColor = _BaseMap.Sample(sampler_BaseMap, uv);
@@ -102,8 +103,9 @@ void InitializeSurfaceData(float2 uv, out ToonSurfaceData output)
     output.albedo = baseColor.rgb;
     output.alpha = baseColor.a;
     output.emission = half3(0,0,0);
-    output.occlusion = half3(1,1,1);
+    output.occlusion = 1;
     output.lightMap = lightMap;
+    output.vertexColor = vertexColor;
 }
 
 #endif

@@ -76,7 +76,7 @@ half3 DirectlightWithOutAlbedo(ToonSurfaceData surfaceData, InputData inputData,
     half shadowAttenuation = (NdotL + 0.5) * 0.5;
     //就这两小步好像确实没必要lerpstep的样子
     // if(shadowWeight > 0.95)
-    //     shadowAttenuation = 1;a
+    //     shadowAttenuation = 1;
     // if(shadowWeight < 0.05)
     //     shadowAttenuation = 0;
 
@@ -84,9 +84,11 @@ half3 DirectlightWithOutAlbedo(ToonSurfaceData surfaceData, InputData inputData,
     if(shadowAttenuation < _LightArea)
     {
         //原公式 ：
-        //shadowAttenuation = 1 - min((-shadowAttenuation + _LightArea) / _LightArea, 1);
-        shadowAttenuation /= _LightArea;
-        rampColor = _RampMap.Sample(sampler_RampMap, half2(shadowAttenuation, rampV));
+        half rampWidthRatio = max(surfaceData.vertexColor.y * 2, 0.01);
+        rampWidthRatio = lerp(1, rampWidthRatio, _UseVertexRampWidth);
+        shadowAttenuation = 1 - min((-shadowAttenuation + _LightArea) / _LightArea / rampWidthRatio, 1);
+        //shadowAttenuation /= _LightArea;
+        rampColor = _RampMap.Sample(sampler_RampMap, half2(shadowAttenuation, rampV)).rgb;
     }
     else
     { 
@@ -96,16 +98,16 @@ half3 DirectlightWithOutAlbedo(ToonSurfaceData surfaceData, InputData inputData,
     //shadowAttenuation = lerp(shadowAttenuation /= _LightArea, 1, step(_LightArea, shadowAttenuation));
     //接受投影，先这样吧，目前效果最能接受的办法了
     //half3 shadowColor = _RampMap.Sample(sampler_RampMap, half2(shadowAttenuation, rampV));
-    half3 lightShadowColor = _RampMap.Sample(sampler_RampMap, half2(0, rampV));
+    half3 lightShadowColor = _RampMap.Sample(sampler_RampMap, half2(0, rampV)).rgb;
     half3 shadowColor = lerp(lightShadowColor, rampColor, light.shadowAttenuation);
+    //half3 shadowColor = lightShadowColor + (rampColor - lightShadowColor) * light.shadowAttenuation;
     
 #endif
-
     //blinnPhongSpecular
     half3 specularColor = _SpecularColor * pow(saturate(dot(inputData.normalWS, halfNormal)), _SpecularPower);
     specularColor *= surfaceData.lightMap.r;
 
-    return light.color * (shadowColor);
+    return shadowColor * light.color;
     return light.color * (shadowColor + specularColor);
 }
 
@@ -168,7 +170,7 @@ half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData, half 
     // emission
     //half3 emissionResult = ShadeEmission(surfaceData, lightingData);
 
-    return directLight * surfaceData.albedo;
+    //return directLight * surfaceData.albedo;
     return saturate((Indirectlight + directLight) * surfaceData.albedo);
     //return CompositeAllLightResults(indirectResult, mainLightResult, additionalLightSumResult, emissionResult, surfaceData, lightingData);
 }
