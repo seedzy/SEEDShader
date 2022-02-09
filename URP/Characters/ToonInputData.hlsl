@@ -43,6 +43,7 @@ CBUFFER_START(UnityPerMaterial)
     half    _LightArea;
     half4   _RampMapLayerSwitch;
     half    _UseVertexRampWidth;
+    half    _ColorTone;
 
     // shadow mapping
     half    _ReceiveShadowMappingAmount;

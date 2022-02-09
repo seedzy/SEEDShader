@@ -259,7 +259,7 @@ half4 ShadeFinalColor(v2f input) : SV_TARGET
     finColor = ConvertSurfaceColorToOutlineColor(finColor);
 #endif
 
-    
+    return (half4)surfaceData.lightMap.g;
     //finColor = ApplyFog(finColor, input);
     return half4(finColor, surfaceData.alpha);
 }

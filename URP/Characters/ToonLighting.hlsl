@@ -59,17 +59,6 @@ half3 DirectlightWithOutAlbedo(ToonSurfaceData surfaceData, InputData inputData,
     half rampLayer = GetYSRampMapLayer(surfaceData.lightMap.a, _RampMapLayerSwitch);
     #endif
     
-    half rampV;
-
-    float time = 1;
-    if(time)
-    {
-        //逻辑还算简单，-1是为了把坐标起点映射到0
-        //*0.1是为了把坐标缩放到0 ~ 1
-        //+0.05是为了是采样点位于ramp中部
-        //1-其实是因为uv和ramp顺序是反的，也可以直接反转纹理
-        rampV = 1 - ((rampLayer - 1) * 0.1 + 0.05);
-    }
 
     half shadowWeight = surfaceData.lightMap.g;
     //half shadowAttenuation = 0.5 * NdotL + 0.5;
@@ -81,6 +70,9 @@ half3 DirectlightWithOutAlbedo(ToonSurfaceData surfaceData, InputData inputData,
         shadowAttenuation = 0;
 
     half3 rampColor;
+    half2 rampV = (half2)0;
+    half time = 1;
+    
     if(shadowAttenuation < _LightArea)
     {
         //原公式 ：
@@ -88,17 +80,32 @@ half3 DirectlightWithOutAlbedo(ToonSurfaceData surfaceData, InputData inputData,
         rampWidthRatio = lerp(1, rampWidthRatio, _UseVertexRampWidth);
         shadowAttenuation = 1 - min((-shadowAttenuation + _LightArea) / _LightArea / rampWidthRatio, 1);
         //shadowAttenuation /= _LightArea;
-        rampColor = _RampMap.Sample(sampler_RampMap, half2(shadowAttenuation, rampV)).rgb;
+        if(time)
+        {
+            //逻辑还算简单，-1是为了把坐标起点映射到0
+            //*0.1是为了把坐标缩放到0 ~ 1
+            //+0.05是为了是采样点位于ramp中部
+            //1-其实是因为uv和ramp顺序是反的，也可以直接反转纹理
+            rampV.x = 1 - ((rampLayer - 1) * 0.1 + 0.05);
+            rampV.y = 1 - ((rampLayer - 1) * 0.1 + 0.55);
+            
+            rampColor = _RampMap.Sample(sampler_RampMap, half2(shadowAttenuation, rampV.x)).rgb;
+            half3 rampColor2 = _RampMap.Sample(sampler_RampMap, half2(shadowAttenuation, rampV.y)).rgb;
+            rampColor2 = (rampColor - rampColor2) * _ColorTone;
+            rampColor = rampColor + rampColor2;
+        }
+        
     }
     else
     { 
         //shadowAttenuation = 1;
         rampColor = 1;
     }
+
     //shadowAttenuation = lerp(shadowAttenuation /= _LightArea, 1, step(_LightArea, shadowAttenuation));
     //接受投影，先这样吧，目前效果最能接受的办法了
     //half3 shadowColor = _RampMap.Sample(sampler_RampMap, half2(shadowAttenuation, rampV));
-    half3 lightShadowColor = _RampMap.Sample(sampler_RampMap, half2(0, rampV)).rgb;
+    half3 lightShadowColor = _RampMap.Sample(sampler_RampMap, half2(0, rampV.x)).rgb;
     half3 shadowColor = lerp(lightShadowColor, rampColor, light.shadowAttenuation);
     //half3 shadowColor = lightShadowColor + (rampColor - lightShadowColor) * light.shadowAttenuation;
     

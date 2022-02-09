@@ -46,6 +46,7 @@ Shader "SEEDzy/URP/Character/CartoonPreview"
         _RampMap("ShadowRampMap", 2D) =  "white" {}
         _LightArea("LightArea", range(0,1)) = 0.5
         _RampMapLayerSwitch("RampMapLayerSwitch", vector) = (0.00,0.00,0.00,0.00)
+        _ColorTone("ColorTone", Range(0,1)) = 1
         [Space]
         _MainLightIgnoreCelShade("_MainLightIgnoreCelShade没用", Range(0,1)) = 0
         _AdditionalLightIgnoreCelShade("_AdditionalLightIgnoreCelShade没用", Range(0,1)) = 0.9
