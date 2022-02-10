@@ -66,8 +66,18 @@ Shader "SEEDzy/URP/Character/CartoonPreview"
         
         [Header(Specular)]
         [Toggle]_UseSpecularMask("_SpecularMask (on/off Specular completely)", Float) = 0
-        _SpecularPower("高光强度", Range(0,10)) = 1
-        [HDR]_SpecularColor("高光颜色", Color) = (1,1,1,1)
+        _SpecPower ("Power",  Range(0.01,15)) = 15
+        _SpecPower2("Power2", Range(0.01,15)) = 10
+        _SpecPower3("Power3", Range(0.01,15)) = 14.6
+        _SpecPower4("Power4", Range(0.01,15)) = 10
+        _SpecPower5("Power5", Range(0.01,15)) = 10
+        
+        [HDR]_SpecColor("SpecularColor", Color) = (1,1,1,1)
+        _SpecColorMulti ("ColorMulti ", Range(0, 1)) = 0.8
+        _SpecColorMulti2("ColorMulti2", Range(0, 1)) = 0.1
+        _SpecColorMulti3("ColorMulti3", Range(0, 1)) = 0.8
+        _SpecColorMulti4("ColorMulti4", Range(0, 1)) = 0.1
+        _SpecColorMulti5("ColorMulti5", Range(0, 1)) = 0.1
 
         [Header(Test)]
         [Toggle(_USE_NORMALSH)]_TestSHLight("Flattening IndirectLight Off", float) = 0

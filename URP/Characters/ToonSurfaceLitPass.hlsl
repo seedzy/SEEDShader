@@ -210,20 +210,20 @@ half3 GetFinalEmissionColor(v2f input)
 /// <summary>
 /// 采样SpecularMask,这个贴图主要是为了限制高光区域
 /// </summary>
-half GetSpecularMask(v2f input)
-{
-    half result = 1;
-    if(_UseSpecularMask)
-    {
-        half4 texValue = tex2D(_SpecularMap, input.uv);
-        //指定mask使用的通道
-        half specularMaskValue = dot(texValue.xyz, _SpecularMapChannelMask);
-        
-        result = specularMaskValue;
-    }
-    //采样并直接返回了，之后再改
-    return result;
-}
+// half GetSpecularMask(v2f input)
+// {
+//     half result = 1;
+//     if(_UseSpecularMask)
+//     {
+//         half4 texValue = tex2D(_SpecularMap, input.uv);
+//         //指定mask使用的通道
+//         half specularMaskValue = dot(texValue.xyz, _SpecularMapChannelMask);
+//         
+//         result = specularMaskValue;
+//     }
+//     //采样并直接返回了，之后再改
+//     return result;
+// }
 
 
 half3 ConvertSurfaceColorToOutlineColor(half3 originalSurfaceColor)
@@ -250,15 +250,19 @@ half4 ShadeFinalColor(v2f input) : SV_TARGET
     
     InputData inputData;
     InitializeInputData(input, inputData);
-    
-    half3 finColor = ToonSurfaceShading(surfaceData, inputData, input.positionWSWithNdotL.w);
 
+    half2 rampV = half2(0,0);
+    half4 specColorPower = (half4)0;
+    InitializeYSData(surfaceData.lightMap.a, rampV, specColorPower);
+    
+    half3 finColor = ToonSurfaceShading(surfaceData, inputData, input.positionWSWithNdotL.w, rampV, specColorPower);
 
     //混合描边和贴图颜色
 #ifdef ToonShaderIsOutline
     finColor = ConvertSurfaceColorToOutlineColor(finColor);
 #endif
 
+    //return _MainLightColor.z;
     //return (half4)input.positionWSWithNdotL.w;
     //finColor = ApplyFog(finColor, input);
     return half4(finColor, surfaceData.alpha);

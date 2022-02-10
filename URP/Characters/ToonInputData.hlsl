@@ -3,6 +3,9 @@
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 #include "ToonSurfaceData.hlsl"
+
+#define SKIN_RAMP_LAYER 1
+
 // put all your uniforms(usually things inside .shader file's properties{}) inside this CBUFFER, in order to make SRP batcher compatible
 // see -> https://blogs.unity3d.com/2019/02/28/srp-batcher-speed-up-your-rendering/
 CBUFFER_START(UnityPerMaterial)
@@ -30,11 +33,18 @@ CBUFFER_START(UnityPerMaterial)
     half    _OcclusionRemapStart;
     half    _OcclusionRemapEnd;
 
-    //specularMask
-    float   _UseSpecularMask;
-    float   _SpecularPower;
-    half3   _SpecularColor;
-    half3   _SpecularMapChannelMask;
+    //specular
+    half    _SpecPower ;
+    half    _SpecPower2;
+    half    _SpecPower3;
+    half    _SpecPower4;
+    half    _SpecPower5;
+    half3   _SpecColor;
+    half    _SpecColorMulti ;
+    half    _SpecColorMulti2;
+    half    _SpecColorMulti3;
+    half    _SpecColorMulti4;
+    half    _SpecColorMulti5;
 
     // lighting
     half3   _IndirectLightMinColor;
@@ -107,6 +117,60 @@ void InitializeSurfaceData(float2 uv, half4 vertexColor, out ToonSurfaceData out
     output.occlusion = 1;
     output.lightMap = lightMap;
     output.vertexColor = vertexColor;
+}
+
+
+/// <summary>
+/// 这逻辑。。。。晕
+/// </summary>
+half GetYSRampMapLayer(half rampMask)
+{
+    half4 condition1 = rampMask.xxxx >= half4(0.80, 0.60, 0.40, 0.20);
+    half3 condition2  = rampMask.xxx     <     half3(0.80, 0.60, 0.40);
+    
+    half finalLayer = lerp(1         , 2, 1 - condition1.x            * _RampMapLayerSwitch.x);
+    finalLayer      = lerp(finalLayer, 5, condition1.y * condition2.x * _RampMapLayerSwitch.y);
+    finalLayer      = lerp(finalLayer, 3, condition1.z * condition2.y * _RampMapLayerSwitch.z);
+    finalLayer      = lerp(finalLayer, 4, condition1.w * condition2.z * _RampMapLayerSwitch.w);
+
+    return finalLayer;
+}
+
+half4 GetYSSpecColorPower(half finalLayer)
+{
+    half4 condition = finalLayer.xxxx == half4(2.0, 3.0, 4.0, 1.0);
+    half specPower = lerp(_SpecPower5, _SpecPower4, condition.z);
+    specPower      = lerp( specPower,  _SpecPower3, condition.y);
+    specPower      = lerp( specPower,  _SpecPower2, condition.x);
+    specPower      = lerp( specPower,  _SpecPower,  condition.w);
+
+    half specMulti = lerp(_SpecColorMulti5, _SpecColorMulti4, condition.z);
+    specMulti      = lerp(specMulti,        _SpecColorMulti3, condition.y);
+    specMulti      = lerp(specMulti,        _SpecColorMulti2, condition.x);
+    specMulti      = lerp(specMulti,        _SpecColorMulti,  condition.w);
+    
+    return half4(specMulti.xxx * _SpecColor, specPower);
+}
+
+void InitializeYSData(half rampMask, out half2 rampV, out half4 specColorPower)
+{
+    half rampLayer = 0;
+#ifdef _USE_RAMPMAP
+    #ifdef _ISFACE
+    rampLayer = GetYSRampMapLayer(SKIN_RAMP_LAYER);
+    #else
+    rampLayer = GetYSRampMapLayer(rampMask);
+    #endif
+#endif
+
+    //逻辑还算简单，-1是为了把坐标起点映射到0
+    //*0.1是为了把坐标缩放到0 ~ 1
+    //+0.05是为了是采样点位于ramp中部
+    //1-其实是因为uv和ramp顺序是反的，也可以直接反转纹理
+    rampV.x = 1 - ((rampLayer - 1) * 0.1 + 0.05);
+    rampV.y = 1 - ((rampLayer - 1) * 0.1 + 0.55);
+
+    specColorPower = GetYSSpecColorPower(rampLayer);
 }
 
 #endif

@@ -4,7 +4,7 @@
 #include "ToonSurfaceData.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
-#define SKIN_RAMP_LAYER 1
+
 
 //扁平化的间接光照，留作对比
 half3 ShadeGI(ToonSurfaceData surfaceData)
@@ -21,49 +21,15 @@ half3 ShadeGI(ToonSurfaceData surfaceData)
     return averageSH * indirectOcclusion;
 }
 
-/// <summary>
-/// 这逻辑。。。。晕
-/// </summary>
-half GetYSRampMapLayer(half rampMask, half4 rampMapLayerSwitch)
+
+half3 DirectDiffuseWithoutAlbedo(ToonSurfaceData surfaceData, InputData inputData, Light light, half NdotL, half2 rampV)
 {
-    half4 condition1 = rampMask.xxxx >= half4(0.80, 0.60, 0.40, 0.20);
-    half3 condition2  = rampMask.xxx     <     half3(0.80, 0.60, 0.40);
-    
-    half finalLayer = lerp(1         , 2, condition1.x                * rampMapLayerSwitch.x);
-         finalLayer = lerp(finalLayer, 5, condition1.y * condition2.x * rampMapLayerSwitch.y);
-         finalLayer = lerp(finalLayer, 3, condition1.z * condition2.y * rampMapLayerSwitch.z);
-         finalLayer = lerp(finalLayer, 4, condition1.w * condition2.z * rampMapLayerSwitch.w);
-
-    return finalLayer;
-}
-
-half3 DirectlightWithOutAlbedo(ToonSurfaceData surfaceData, InputData inputData, Light light, half NdotL)
-{
-    //half ndotL = dot(inputData.normalWS, light.direction) * 0.5 + 0.5;
-    half3 halfNormal = normalize(light.direction + inputData.viewDirectionWS);  
-
     //lambertDiffuse    
-#ifndef _USE_RAMPMAP
-    half shadowAttenuation;
-    half litOrShadowMark = smoothstep(_CelShadeMidPoint-_CelShadeSoftness,_CelShadeMidPoint+_CelShadeSoftness, NdotL);
-    // light's shadow map
-    litOrShadowMark *= lerp(1, light.shadowAttenuation, _ReceiveShadowMappingAmount);
-    //shadow Color
-    half3 shadowColor = lerp(_ShadowMapColor, 1, litOrShadowMark);
-
-    half distanceAttenuation = min(4, light.distanceAttenuation);
-    shadowColor *= light.distanceAttenuation;
-#else
-    #ifdef _ISFACE
-    half rampLayer = GetYSRampMapLayer(SKIN_RAMP_LAYER, _RampMapLayerSwitch);
-    #else
-    half rampLayer = GetYSRampMapLayer(surfaceData.lightMap.a, _RampMapLayerSwitch);
-    #endif
-    
+#ifdef _USE_RAMPMAP
 
     half shadowWeight = surfaceData.lightMap.g;
     //half shadowAttenuation = 0.5 * NdotL + 0.5;
-    //half shadowAttenuation = (NdotL + 0.5) * 0.5;
+    //half shadowAttenuation = (NdotL * shadowWeight) * 0.5;
     //就这两小步好像确实没必要lerpstep的样子
     // if(shadowWeight > 0.95)
     //     shadowAttenuation = 1;
@@ -71,13 +37,12 @@ half3 DirectlightWithOutAlbedo(ToonSurfaceData surfaceData, InputData inputData,
     //     shadowAttenuation = 0;
     //我服了，搞不出来，先妥协了
     half shadowAttenuation = NdotL;
-    shadowAttenuation = lerp(0, 1, (shadowWeight + NdotL) * 0.5 );
+    //shadowAttenuation = lerp(0, 1, (shadowWeight + NdotL) * 0.5 );
 
     half3 rampColor;
-    half2 rampV = (half2)0;
     half time = 1;
     
-    if(shadowAttenuation < _LightArea)
+    if(shadowAttenuation < _LightArea && shadowWeight < 0.95)
     {
         //原公式 ：
         half rampWidthRatio = max(surfaceData.vertexColor.y * 2, 0.01);
@@ -86,12 +51,6 @@ half3 DirectlightWithOutAlbedo(ToonSurfaceData surfaceData, InputData inputData,
         //shadowAttenuation /= _LightArea;
         if(time)
         {
-            //逻辑还算简单，-1是为了把坐标起点映射到0
-            //*0.1是为了把坐标缩放到0 ~ 1
-            //+0.05是为了是采样点位于ramp中部
-            //1-其实是因为uv和ramp顺序是反的，也可以直接反转纹理
-            rampV.x = 1 - ((rampLayer - 1) * 0.1 + 0.05);
-            rampV.y = 1 - ((rampLayer - 1) * 0.1 + 0.55);
             
             rampColor = _RampMap.Sample(sampler_RampMap, half2(shadowAttenuation, rampV.x)).rgb;
             half3 rampColor2 = _RampMap.Sample(sampler_RampMap, half2(shadowAttenuation, rampV.y)).rgb;
@@ -102,36 +61,38 @@ half3 DirectlightWithOutAlbedo(ToonSurfaceData surfaceData, InputData inputData,
     }
     else
     { 
-        //shadowAttenuation = 1;
         rampColor = 1;
     }
 
-    //shadowAttenuation = lerp(shadowAttenuation /= _LightArea, 1, step(_LightArea, shadowAttenuation));
     //接受投影，先这样吧，目前效果最能接受的办法了
     //half3 shadowColor = _RampMap.Sample(sampler_RampMap, half2(shadowAttenuation, rampV));
     half3 ShadowColor2 = _RampMap.Sample(sampler_RampMap, half2(0, rampV.x)).rgb;
-    half3 shadowColor = lerp(ShadowColor2, rampColor, light.shadowAttenuation);
+    half3 shadowColor = lerp(ShadowColor2, rampColor, shadowWeight * 2);
     //half3 shadowColor = lightShadowColor + (rampColor - lightShadowColor) * light.shadowAttenuation;
-    
-#endif
-    //blinnPhongSpecular
-    half3 specularColor = _SpecularColor * pow(saturate(dot(inputData.normalWS, halfNormal)), _SpecularPower);
-    specularColor *= surfaceData.lightMap.r;
+#else
+    half litOrShadowMark = smoothstep(_CelShadeMidPoint-_CelShadeSoftness,_CelShadeMidPoint+_CelShadeSoftness, NdotL);
+    // light's shadow map
+    litOrShadowMark *= lerp(1, light.shadowAttenuation, _ReceiveShadowMappingAmount);
+    //shadow Color
+    half3 shadowColor = lerp(_ShadowMapColor, 1, litOrShadowMark);
 
-    return shadowAttenuation;
-    return shadowColor * light.color;
-    return light.color * (shadowColor + specularColor);
+    half distanceAttenuation = min(4, light.distanceAttenuation);
+    shadowColor *= light.distanceAttenuation;
+#endif
+    
+
+    return shadowColor;
 }
 
 
-half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData, half NdotL)
+half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData, half NdotL, half2 rampV, half4 specColorPower)
 {
     // Indirect lighting
     
  #ifdef _USE_NORMALSH
-     half3 Indirectlight = inputData.bakedGI * surfaceData.occlusion;
+     half3 IndirectDiffuse = inputData.bakedGI * surfaceData.occlusion;
  #else
-    half3 Indirectlight = ShadeGI(surfaceData);
+    half3 IndirectDiffuse = ShadeGI(surfaceData);
 #endif
 
     // Main light is the brightest directional light.
@@ -153,7 +114,15 @@ half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData, half 
     //https://www.bilibili.com/read/cv6436088/
 
     // Main light
-    half3 directLight = DirectlightWithOutAlbedo(surfaceData, inputData, mainLight, NdotL);
+    half3 directDiffuse = DirectDiffuseWithoutAlbedo(surfaceData, inputData, mainLight, NdotL, rampV);
+
+    //blinnPhongSpecular
+    half3 halfNormal = normalize(mainLight.direction + inputData.viewDirectionWS);  
+    half3 specular = specColorPower.rgb * pow(saturate(dot(inputData.normalWS, halfNormal)), specColorPower.w);
+    specular *= surfaceData.lightMap.r;
+    //specularColor *= surfaceData.lightMap.b;
+    specular = specular * ((1 - surfaceData.lightMap.b) < specular);
+    //specular *= surfaceData.lightMap.b;
 
     //==============================================================================================
     // All additional lights
@@ -182,9 +151,12 @@ half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData, half 
     // emission
     //half3 emissionResult = ShadeEmission(surfaceData, lightingData);
 
-    return directLight;
+    half3 diffuse = (IndirectDiffuse + directDiffuse) * surfaceData.albedo;
+
+    return specular;
+    //return directLight;
     //return directLight * surfaceData.albedo;
-    return saturate((Indirectlight + directLight) * surfaceData.albedo);
+    return mainLight.color * (diffuse + specular);
     //return CompositeAllLightResults(indirectResult, mainLightResult, additionalLightSumResult, emissionResult, surfaceData, lightingData);
 }
 
