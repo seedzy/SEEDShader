@@ -84,6 +84,17 @@ half3 DirectDiffuseWithoutAlbedo(ToonSurfaceData surfaceData, InputData inputDat
     return shadowColor;
 }
 
+half3 DirectSpecular(ToonSurfaceData surfaceData, InputData inputData , half3 lightDirWS, half4 specColorPower)
+{
+    //blinnPhongSpecular
+    half3 halfNormal = normalize(lightDirWS + inputData.viewDirectionWS);  
+    half3 specular = pow(saturate(dot(inputData.normalWS, halfNormal)), specColorPower.w);
+    //specularColor *= surfaceData.lightMap.b;
+    specular *= (1 - surfaceData.lightMap.b < specular);
+    specular *= surfaceData.lightMap.r * specColorPower.rgb;
+    return specular;
+}
+
 
 half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData, half NdotL, half2 rampV, half4 specColorPower)
 {
@@ -116,12 +127,7 @@ half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData, half 
     // Main light
     half3 directDiffuse = DirectDiffuseWithoutAlbedo(surfaceData, inputData, mainLight, NdotL, rampV);
 
-    //blinnPhongSpecular
-    half3 halfNormal = normalize(mainLight.direction + inputData.viewDirectionWS);  
-    half3 specular = pow(saturate(dot(inputData.normalWS, halfNormal)), specColorPower.w);
-    //specularColor *= surfaceData.lightMap.b;
-    specular *= (1 - surfaceData.lightMap.b < specular);
-    specular *= surfaceData.lightMap.r * specColorPower.rgb;
+    
     //specular *= surfaceData.lightMap.b;
 
     //==============================================================================================
@@ -152,11 +158,13 @@ half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData, half 
     //half3 emissionResult = ShadeEmission(surfaceData, lightingData);
 
     half3 diffuse = (IndirectDiffuse + directDiffuse) * surfaceData.albedo;
+    half3 specular = DirectSpecular(surfaceData, inputData, mainLight.direction, specColorPower);
 
+    half3 finColor = (diffuse + specular) * ((mainLight.color - 1) * 0.3 + 1);
     //return specular;
     //return directLight;
     //return directLight * surfaceData.albedo;
-    return mainLight.color * (diffuse + specular);
+    return finColor; //*ambientBrightness 
     //return CompositeAllLightResults(indirectResult, mainLightResult, additionalLightSumResult, emissionResult, surfaceData, lightingData);
 }
 
