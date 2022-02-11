@@ -128,7 +128,7 @@ half GetYSRampMapLayer(half rampMask)
     half4 condition1 = rampMask.xxxx >= half4(0.80, 0.60, 0.40, 0.20);
     half3 condition2  = rampMask.xxx     <     half3(0.80, 0.60, 0.40);
     
-    half finalLayer = lerp(1         , 2, 1 - condition1.x            * _RampMapLayerSwitch.x);
+    half finalLayer = lerp(1         , 2, condition1.x                * _RampMapLayerSwitch.x);
     finalLayer      = lerp(finalLayer, 5, condition1.y * condition2.x * _RampMapLayerSwitch.y);
     finalLayer      = lerp(finalLayer, 3, condition1.z * condition2.y * _RampMapLayerSwitch.z);
     finalLayer      = lerp(finalLayer, 4, condition1.w * condition2.z * _RampMapLayerSwitch.w);

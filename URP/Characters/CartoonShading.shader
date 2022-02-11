@@ -2,8 +2,9 @@ Shader "SEEDzy/URP/Character/CartoonPreview"
 {
     Properties
     {
-//        [Header(High Level Setting)]
+        [Header(High Level Setting)]
         [Toggle(_IS_FACE)]_IsFace("Is Face? (please turn on if this is a face material)", Float) = 0
+        [Enum (UnityEngine.Rendering.CullMode)]_Culling("Culling", float) = 0
 
         // all properties will try to follow URP Lit shader's naming convention
         // so switching your URP lit material's shader to this toon lit shader will preserve most of the original properties if defined in this shader
@@ -91,7 +92,7 @@ Shader "SEEDzy/URP/Character/CartoonPreview"
             "UniversalMaterialType" = "Lit"
             "Queue"="Geometry"
         }
-        
+        Cull [_Culling]
         // We can extract duplicated hlsl code from all passes into this HLSLINCLUDE section. Less duplicated code = Less error
         //你是对的
         HLSLINCLUDE

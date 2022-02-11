@@ -118,10 +118,10 @@ half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData, half 
 
     //blinnPhongSpecular
     half3 halfNormal = normalize(mainLight.direction + inputData.viewDirectionWS);  
-    half3 specular = specColorPower.rgb * pow(saturate(dot(inputData.normalWS, halfNormal)), specColorPower.w);
-    specular *= surfaceData.lightMap.r;
+    half3 specular = pow(saturate(dot(inputData.normalWS, halfNormal)), specColorPower.w);
     //specularColor *= surfaceData.lightMap.b;
-    specular = specular * ((1 - surfaceData.lightMap.b) < specular);
+    specular *= (1 - surfaceData.lightMap.b < specular);
+    specular *= surfaceData.lightMap.r * specColorPower.rgb;
     //specular *= surfaceData.lightMap.b;
 
     //==============================================================================================
@@ -153,7 +153,7 @@ half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData, half 
 
     half3 diffuse = (IndirectDiffuse + directDiffuse) * surfaceData.albedo;
 
-    return specular;
+    //return specular;
     //return directLight;
     //return directLight * surfaceData.albedo;
     return mainLight.color * (diffuse + specular);
