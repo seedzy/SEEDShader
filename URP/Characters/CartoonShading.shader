@@ -53,6 +53,16 @@ Shader "SEEDzy/URP/Character/CartoonPreview"
         [Space]
         _MainLightIgnoreCelShade("_MainLightIgnoreCelShade没用", Range(0,1)) = 0
         _AdditionalLightIgnoreCelShade("_AdditionalLightIgnoreCelShade没用", Range(0,1)) = 0.9
+        
+        [Header(MetaLight)]
+        _MT("MetalTexture", 2D) =  "White" {}
+        _Metal_Brightness("MetalBrightness", range(0, 5)) = 3
+        _Metal_SpecPower("MetalSpecularPower", range(0.01, 100)) = 90
+        _Metal_SpecAttenInShadow("MetalSpecularAttenuationInShadow", range(0, 1)) = 0.2
+        _Metal_LightColor("MetalLightColor", Color) = (1,1,1,1)
+        _Metal_DarkColor("MetalDarkColor", Color) = (0.3, 0.1, 0.05, 1)
+        _Metal_ShadowMultiColor("MetalShadowMultiColor", Color) = (0.48, 0.38, 0.58, 1)
+        _Metal_SpecColor("MetalSpecluarColor", Color) = (1, 1, 1, 1)
 
         [Header(Shadow mapping)]
         _ReceiveShadowMappingAmount("_ReceiveShadowMappingAmount", Range(0,1)) = 0.65

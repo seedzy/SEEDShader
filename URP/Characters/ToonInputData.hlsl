@@ -57,6 +57,15 @@ CBUFFER_START(UnityPerMaterial)
     half    _LightRatio;
     half    _EmissionPower;
 
+    //Metal
+    half    _Metal_Brightness;
+    half    _Metal_SpecPower;
+    half    _Metal_SpecAttenInShadow;
+    half3   _Metal_LightColor;
+    half3   _Metal_DarkColor;
+    half3   _Metal_ShadowMultiColor;
+    half3   _Metal_SpecColor;
+
     // shadow mapping
     half    _ReceiveShadowMappingAmount;
     float   _ReceiveShadowMappingPosOffset;
@@ -75,6 +84,7 @@ CBUFFER_END
 TEXTURE2D(_BaseMap);  SAMPLER(sampler_BaseMap);
 TEXTURE2D(_RampMap);  SAMPLER(sampler_RampMap);
 TEXTURE2D(_LightMap); SAMPLER(sampler_LightMap);
+TEXTURE2D(_MT);       SAMPLER(sampler_MT);
 
 sampler2D _EmissionMap;
 sampler2D _OcclusionMap;

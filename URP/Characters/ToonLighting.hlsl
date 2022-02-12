@@ -96,7 +96,8 @@ half3 DirectSpecular(ToonSurfaceData surfaceData, InputData inputData , half3 li
 }
 
 
-half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData, half NdotL, half2 rampV, half4 specColorPower)
+half3
+ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData, half NdotL, half2 rampV, half4 specColorPower)
 {
     // Indirect lighting
     
@@ -149,14 +150,45 @@ half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData, half 
 //     }
 // #endif
 
+    half3 finColor;
+    //specular Flow
+    if(surfaceData.lightMap.x > 0.90)
+    {
+        //用逆转置是正确的，但是就效果表现上不需要那么精确，因此直接用V矩阵也没什么毛病
+        half3 normalVS = mul(UNITY_MATRIX_IT_MV, inputData.normalWS);
+        //half3 normalVS = mul(UNITY_MATRIX_V, inputData.normalWS);
+        half2 MT_UV = normalVS.xy * 0.5 + 0.5;
 
-    half3 diffuse = (IndirectDiffuse + directDiffuse) * surfaceData.albedo;
-    half3 specular = DirectSpecular(surfaceData, inputData, mainLight.direction, specColorPower);
-    half3 finColor = diffuse + specular;
+        finColor = min(_MT.Sample(sampler_MT, MT_UV) * _Metal_Brightness, 1);
+        //r6//r13
+        finColor = lerp(_Metal_DarkColor, _Metal_LightColor, finColor) * surfaceData.albedo;
+        //暂时没算__ES_CharacterMainLightBrightness
+        finColor = lerp(finColor * _Metal_SpecAttenInShadow, finColor, NdotL > _LightArea);
     
-    //alpha标记emission
-    finColor = lerp(finColor * lerp(1, mainLight.color, _LightRatio), finColor * surfaceData.emission, surfaceData.alpha);
     
+        half3 halfNormal = normalize(mainLight.direction + inputData.viewDirectionWS);  
+        half spec = pow(saturate(dot(inputData.normalWS, halfNormal)), _Metal_SpecPower);
+
+        //要处理高光在阴影内衰减
+        //r0
+        finColor += min(spec * 15, 1) * _Metal_SpecColor * surfaceData.lightMap.z; //* _Metal_SpecAttenInShadow * __ES_CharacterMainLightBrightness
+    }
+    //diffuse Flow
+    else
+    {
+        half3 diffuse = (IndirectDiffuse + directDiffuse) * surfaceData.albedo;
+        half3 specular = DirectSpecular(surfaceData, inputData, mainLight.direction, specColorPower);
+        finColor = diffuse + specular;
+    
+        //alpha标记emission
+        finColor = lerp(finColor * lerp(1, mainLight.color, _LightRatio), finColor * surfaceData.emission, surfaceData.alpha);
+
+        half maxChannel = max(finColor.r, finColor.g);
+        maxChannel = max(maxChannel, finColor.b);
+        if(maxChannel > 1)
+            finColor /= maxChannel;
+    }
+
     //return specular;
     //return directLight;
     //return directLight * surfaceData.albedo;

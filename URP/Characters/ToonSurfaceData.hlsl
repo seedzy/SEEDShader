@@ -9,7 +9,7 @@ struct  ToonSurfaceData
     half    emission;
     half    occlusion;
     half4   vertexColor;
-    //specularMask, shadowWeight, specular?, rampMask
+    //specularMask, shadowWeight, specularShape, rampMask
     half4   lightMap;
 };
 
