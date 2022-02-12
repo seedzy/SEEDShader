@@ -40,6 +40,8 @@ Shader "SEEDzy/URP/Character/CartoonPreview"
         _DirectLightMultiplier("_DirectLightMultiplier没用", Range(0,1)) = 1
         _CelShadeMidPoint("明暗分界", Range(-1,1)) = -0.5
         _CelShadeSoftness("明暗柔和度", Range(0,1)) = 0.05
+        _LightRatio("LightRatio", range(0,1)) = 0.3
+        [HDR]_EmissionPower("EmissionPower", Range(0, 10)) = 1
         [Space]
         [Header(ShadowRamp)]
         [Toggle(_USE_RAMPMAP)]_UseRampMap("Use Ramp Map", float) = 1

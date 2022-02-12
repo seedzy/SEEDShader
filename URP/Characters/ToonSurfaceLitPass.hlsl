@@ -265,7 +265,7 @@ half4 ShadeFinalColor(v2f input) : SV_TARGET
     //return _MainLightColor.z;
     //return (half4)input.positionWSWithNdotL.w;
     //finColor = ApplyFog(finColor, input);
-    return half4(saturate(finColor), surfaceData.alpha);
+    return half4(finColor, surfaceData.alpha);
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////

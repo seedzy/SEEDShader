@@ -6,7 +6,7 @@ struct  ToonSurfaceData
 {
     half3   albedo;
     half    alpha;
-    half3   emission;
+    half    emission;
     half    occlusion;
     half4   vertexColor;
     //specularMask, shadowWeight, specular?, rampMask

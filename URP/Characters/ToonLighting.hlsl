@@ -126,11 +126,7 @@ half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData, half 
 
     // Main light
     half3 directDiffuse = DirectDiffuseWithoutAlbedo(surfaceData, inputData, mainLight, NdotL, rampV);
-
     
-    //specular *= surfaceData.lightMap.b;
-
-    //==============================================================================================
     // All additional lights
 
     half3 additionalLightSumResult = 0;
@@ -152,15 +148,15 @@ half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData, half 
 //         additionalLightSumResult += ShadeSingleLight(surfaceData, lightingData, light, true);
 //     }
 // #endif
-    //==============================================================================================
 
-    // emission
-    //half3 emissionResult = ShadeEmission(surfaceData, lightingData);
 
     half3 diffuse = (IndirectDiffuse + directDiffuse) * surfaceData.albedo;
     half3 specular = DirectSpecular(surfaceData, inputData, mainLight.direction, specColorPower);
-
-    half3 finColor = (diffuse + specular) * ((mainLight.color - 1) * 0.3 + 1);
+    half3 finColor = diffuse + specular;
+    
+    //alpha标记emission
+    finColor = lerp(finColor * lerp(1, mainLight.color, _LightRatio), finColor * surfaceData.emission, surfaceData.alpha);
+    
     //return specular;
     //return directLight;
     //return directLight * surfaceData.albedo;

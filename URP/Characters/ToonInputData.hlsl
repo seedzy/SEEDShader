@@ -54,6 +54,8 @@ CBUFFER_START(UnityPerMaterial)
     half4   _RampMapLayerSwitch;
     half    _UseVertexRampWidth;
     half    _ColorTone;
+    half    _LightRatio;
+    half    _EmissionPower;
 
     // shadow mapping
     half    _ReceiveShadowMappingAmount;
@@ -113,7 +115,7 @@ void InitializeSurfaceData(float2 uv, half4 vertexColor, out ToonSurfaceData out
     
     output.albedo = baseColor.rgb;
     output.alpha = baseColor.a;
-    output.emission = half3(0,0,0);
+    output.emission = _EmissionPower;
     output.occlusion = 1;
     output.lightMap = lightMap;
     output.vertexColor = vertexColor;
