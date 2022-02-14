@@ -56,6 +56,7 @@ CBUFFER_START(UnityPerMaterial)
     half    _ColorTone;
     half    _LightRatio;
     half    _EmissionPower;
+    half3   _FaceShadowMultiCol;
 
     //Metal
     half    _Metal_Brightness;
@@ -114,15 +115,7 @@ void InitializeSurfaceData(float2 uv, half4 vertexColor, out ToonSurfaceData out
     AlphaTest(baseColor.a);// early exit if possible
 
     half4 lightMap = _LightMap.Sample(sampler_LightMap, uv);
-    // // emission
-    // output.emission = GetFinalEmissionColor(input);
-    //
-    // // occlusion
-    // output.occlusion = GetFinalOcculsion(input);
-    //
-    // //specularMask
-    // output.specularMask = GetSpecularMask(input);
-    
+
     output.albedo = baseColor.rgb;
     output.alpha = baseColor.a;
     output.emission = _EmissionPower;
@@ -148,6 +141,12 @@ half GetYSRampMapLayer(half rampMask)
     return finalLayer;
 }
 
+half GetSDFFaceShadowRamp(half2 uv)
+{
+    //half3 
+    return _RampMap.Sample(sampler_RampMap, uv);
+}
+
 half4 GetYSSpecColorPower(half finalLayer)
 {
     half4 condition = finalLayer.xxxx == half4(2.0, 3.0, 4.0, 1.0);
@@ -168,11 +167,11 @@ void InitializeYSData(half rampMask, out half2 rampV, out half4 specColorPower)
 {
     half rampLayer = 0;
 #ifdef _USE_RAMPMAP
-    #ifdef _ISFACE
-    rampLayer = GetYSRampMapLayer(SKIN_RAMP_LAYER);
-    #else
+    // #ifdef _IS_FACE
+    // rampLayer = GetYSRampMapLayer(SKIN_RAMP_LAYER);
+    // #else
     rampLayer = GetYSRampMapLayer(rampMask);
-    #endif
+    //#endif
 #endif
 
     //逻辑还算简单，-1是为了把坐标起点映射到0

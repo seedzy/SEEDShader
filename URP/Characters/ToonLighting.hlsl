@@ -51,11 +51,9 @@ half3 DirectDiffuseWithoutAlbedo(ToonSurfaceData surfaceData, InputData inputDat
         //shadowAttenuation /= _LightArea;
         if(time)
         {
-            
             rampColor = _RampMap.Sample(sampler_RampMap, half2(shadowAttenuation, rampV.x)).rgb;
             half3 rampColor2 = _RampMap.Sample(sampler_RampMap, half2(shadowAttenuation, rampV.y)).rgb;
-            rampColor2 = (rampColor - rampColor2) * _ColorTone;
-            rampColor = rampColor + rampColor2;
+            rampColor = lerp(rampColor2, rampColor, _ColorTone);
         }
         
     }
@@ -96,8 +94,7 @@ half3 DirectSpecular(ToonSurfaceData surfaceData, InputData inputData , half3 li
 }
 
 
-half3
-ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData, half NdotL, half2 rampV, half4 specColorPower)
+half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData, half NdotL, half2 rampV, half4 specColorPower)
 {
     // Indirect lighting
     
@@ -151,20 +148,21 @@ ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData, half NdotL,
 // #endif
 
     half3 finColor;
+    
     //specular Flow
     if(surfaceData.lightMap.x > 0.90)
     {
         //用逆转置是正确的，但是就效果表现上不需要那么精确，因此直接用V矩阵也没什么毛病
-        //half3 normalVS = mul(UNITY_MATRIX_IT_MV, inputData.normalWS);
-        half3 normalVS = mul(UNITY_MATRIX_V, inputData.normalWS);
+        half3 normalVS = mul(UNITY_MATRIX_IT_MV, inputData.normalWS);
+        //half3 normalVS = mul(UNITY_MATRIX_V, inputData.normalWS);
         half2 MT_UV = half2(normalVS.y * 1, normalVS.z) * 0.5 + 0.5;
 
         finColor = saturate(_MT.Sample(sampler_MT, MT_UV) * _Metal_Brightness);
         //r6//r13
         finColor = lerp(_Metal_DarkColor, _Metal_LightColor, finColor) * surfaceData.albedo;
         //暂时没算__ES_CharacterMainLightBrightness
-        half lightAttenuation = (NdotL + surfaceData.lightMap.g) * 0.5;
-        finColor = lerp(finColor * _Metal_SpecAttenInShadow, finColor, lightAttenuation > _LightArea);
+        half lightAttenuation = (NdotL + 0.5) * 0.5;
+        finColor = lerp(finColor * _Metal_SpecAttenInShadow, finColor, lightAttenuation);
     
     
         half3 halfNormal = normalize(mainLight.direction + inputData.viewDirectionWS);  
@@ -177,26 +175,40 @@ ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData, half NdotL,
     //diffuse Flow
     else
     {
-        half3 diffuse = (IndirectDiffuse + directDiffuse) * surfaceData.albedo;
+        //half3 diffuse = (IndirectDiffuse + directDiffuse) * surfaceData.albedo;
+        half3 diffuse = directDiffuse * surfaceData.albedo;
         half3 specular = DirectSpecular(surfaceData, inputData, mainLight.direction, specColorPower);
         finColor = diffuse + specular;
     
         //alpha标记emission
         finColor = lerp(finColor * lerp(1, mainLight.color, _LightRatio), finColor * surfaceData.emission, surfaceData.alpha);
-
+    
         half maxChannel = max(finColor.r, finColor.g);
         maxChannel = max(maxChannel, finColor.b);
         if(maxChannel > 1)
             finColor /= maxChannel;
     }
 
-    //return specular;
-    //return directLight;
-    //return directLight * surfaceData.albedo;
     return finColor; //*ambientBrightness 
     //return CompositeAllLightResults(indirectResult, mainLightResult, additionalLightSumResult, emissionResult, surfaceData, lightingData);
 }
 
+half3 ToonFaceShading(ToonSurfaceData surfaceData, half3 faceForward, half3 faceLeft, half2 uv)
+{
+    Light light = GetMainLight();
+    half3 faceLightDir = half3(light.direction.x, 0, light.direction.z);
+    half faceLightAtten = 1 - (dot(faceLightDir, faceForward) * 0.5 + 0.5);
+
+    //SDF只记录了左侧光照阴影的情况，在右侧需要反转UV来计算
+    half flipU = sign(dot(faceLightDir, faceLeft));
+    half shadowRamp = GetSDFFaceShadowRamp(uv * half2(flipU, 1));
+
+    half faceShadow = step(faceLightAtten, shadowRamp);
+
+    return lerp(surfaceData.albedo * _FaceShadowMultiCol, surfaceData.albedo, faceShadow) * lerp(1, light.color, _LightRatio);
+    return (half3(0.9, 0.51, 0.51)) * faceShadow;
+    return faceShadow;
+}
 
 
 #endif

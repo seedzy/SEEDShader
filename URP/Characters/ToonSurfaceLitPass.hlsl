@@ -1,4 +1,4 @@
- #ifndef TOON_SURFACE_LIT_PASS
+#ifndef TOON_SURFACE_LIT_PASS
 #define TOON_SURFACE_LIT_PASS
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
@@ -23,13 +23,20 @@ struct a2v
 // all pass will share this Varyings struct (define data needed from our vertex shader to our fragment shader)
 struct v2f
 {
-    float2 uv                       : TEXCOORD0;
-    float4 positionWSWithNdotL      : TEXCOORD1; // xyz: positionWS, w: vertex fog factor
-    half3 normalWS                  : TEXCOORD2;
-    half4 fogFactorAndVertexLight   : TEXCOORD3;
-    DECLARE_LIGHTMAP_OR_SH(lightmapUV, vertexSH, 4);
-    half4 vertexColor               : TEXCOORD5;
     float4 positionCS               : SV_POSITION;
+    float2 uv                       : TEXCOORD0;
+    half3 normalWS                  : TEXCOORD1;
+    half4 fogFactorAndVertexLight   : TEXCOORD2;
+    DECLARE_LIGHTMAP_OR_SH(lightmapUV, vertexSH, 3);
+    half4 vertexColor               : TEXCOORD4;
+    float4 positionWSWithNdotL      : TEXCOORD5; // xyz: positionWS, w: vertex NdotL
+#ifdef _IS_FACE
+    half3 faceForward               : TEXCOORD6;
+    half3 faceLeft                  : TEXCOORD7;
+#endif
+
+
+
 };
 
 
@@ -55,9 +62,8 @@ struct v2f
 void InitializeInputData(v2f input, out InputData inputData)
 {
     inputData = (InputData)0;
-
+ 
     inputData.positionWS = input.positionWSWithNdotL.xyz;
-
     inputData.viewDirectionWS = SafeNormalize(_WorldSpaceCameraPos - input.positionWSWithNdotL.xyz);
     #if defined(_NORMALMAP) || defined(_DETAIL)
     float sgn = input.tangentWS.w;      // should be either +1 or -1
@@ -102,12 +108,10 @@ v2f VertexShaderWork(a2v input)
     float3 positionWS = vertexInput.positionWS;
 
 //     外扩法线
-// #ifdef ToonShaderIsOutline
-//     //试一下压扁法线的效果
-//     float3 outLineNormal = TransformObjectToWorldNormal(float3(input.normalOS.xy, input.normalOS.z * 0.1));
-//     //ToDo临时用tangent存一下平滑法线，后面在改
-//     positionWS = TransformPositionWSToOutlinePositionWS(vertexInput.positionWS, vertexInput.positionVS.z, vertexNormalInput.tangentWS);
-// #endif
+#ifdef ToonShaderIsOutline
+    //ToDo临时用tangent存一下平滑法线，后面在改
+    positionWS = TransformPositionWSToOutlinePositionWS(vertexInput.positionWS, vertexInput.positionVS.z, vertexNormalInput.normalWS);
+#endif
     // Computes fog factor per-vertex.
     half3 vertexLight = VertexLighting(vertexInput.positionWS, vertexNormalInput.normalWS);
     half fogFactor = ComputeFogFactor(vertexInput.positionCS.z);
@@ -116,6 +120,7 @@ v2f VertexShaderWork(a2v input)
 
     // TRANSFORM_TEX is the same as the old shader library.
     output.uv = TRANSFORM_TEX(input.uv,_BaseMap);
+
     //问就是省
     output.positionWSWithNdotL = float4(positionWS, NdotL);
 
@@ -127,6 +132,11 @@ v2f VertexShaderWork(a2v input)
     output.positionCS = TransformWorldToHClip(positionWS);
 
     output.vertexColor = input.vertexColor;
+
+#ifdef _IS_FACE
+    output.faceForward = TransformObjectToWorldDir(half3(0, 0, 1));
+    output.faceLeft = TransformObjectToWorldDir(half3(-1, 0, 0));
+#endif
 
 // #ifdef ToonShaderIsOutline
 //     // [Read ZOffset mask texture]
@@ -188,42 +198,6 @@ half3 GetFinalEmissionColor(v2f input)
     return result;
 }
 
-/// <summary>
-/// 采样OcclusionMap颜色,这个贴图主要是为了做出环境光遮蔽的效果
-/// </summary>
-// half GetFinalOcculsion(v2f input)
-// {
-//     half result = 1;
-//     if(_UseOcclusion)
-//     {
-//         half4 texValue = tex2D(_OcclusionMap, input.uv);
-//         //指定mask使用的通道
-//         half occlusionValue = dot(texValue, _OcclusionMapChannelMask);
-//         occlusionValue = lerp(1, occlusionValue, _OcclusionStrength);
-//         occlusionValue = invLerpClamp(_OcclusionRemapStart, _OcclusionRemapEnd, occlusionValue);
-//         result = occlusionValue;
-//     }
-//
-//     return result;
-// }
-
-/// <summary>
-/// 采样SpecularMask,这个贴图主要是为了限制高光区域
-/// </summary>
-// half GetSpecularMask(v2f input)
-// {
-//     half result = 1;
-//     if(_UseSpecularMask)
-//     {
-//         half4 texValue = tex2D(_SpecularMap, input.uv);
-//         //指定mask使用的通道
-//         half specularMaskValue = dot(texValue.xyz, _SpecularMapChannelMask);
-//         
-//         result = specularMaskValue;
-//     }
-//     //采样并直接返回了，之后再改
-//     return result;
-// }
 
 
 half3 ConvertSurfaceColorToOutlineColor(half3 originalSurfaceColor)
@@ -251,12 +225,15 @@ half4 ShadeFinalColor(v2f input) : SV_TARGET
     InputData inputData;
     InitializeInputData(input, inputData);
 
+#ifdef _IS_FACE
+    half3 finColor = ToonFaceShading(surfaceData, input.faceForward, input.faceLeft, input.uv);
+#else
     half2 rampV = half2(0,0);
     half4 specColorPower = (half4)0;
     InitializeYSData(surfaceData.lightMap.a, rampV, specColorPower);
-    
     half3 finColor = ToonSurfaceShading(surfaceData, inputData, input.positionWSWithNdotL.w, rampV, specColorPower);
-
+#endif
+    
     //混合描边和贴图颜色
 #ifdef ToonShaderIsOutline
     finColor = ConvertSurfaceColorToOutlineColor(finColor);

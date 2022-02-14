@@ -47,6 +47,7 @@ Shader "SEEDzy/URP/Character/CartoonPreview"
         [Toggle(_USE_RAMPMAP)]_UseRampMap("Use Ramp Map", float) = 1
         [Toggle]_UseVertexRampWidth("UseVertexRampWidth", float) = 1
         _RampMap("ShadowRampMap", 2D) =  "white" {}
+        _FaceShadowMultiCol("FaceShadowMultiColor", Color) = (0.95, 0.74, 0.74, 1)
         _LightArea("LightArea", range(0,1)) = 0.5
         _RampMapLayerSwitch("RampMapLayerSwitch", vector) = (0.00,0.00,0.00,0.00)
         _ColorTone("ColorTone", Range(0,1)) = 1
@@ -60,8 +61,8 @@ Shader "SEEDzy/URP/Character/CartoonPreview"
         _Metal_SpecPower("MetalSpecularPower", range(0.01, 100)) = 90
         _Metal_SpecAttenInShadow("MetalSpecularAttenuationInShadow", range(0, 1)) = 0.2
         _Metal_LightColor("MetalLightColor", Color) = (1,1,1,1)
-        _Metal_DarkColor("MetalDarkColor", Color) = (0.3, 0.1, 0.05, 1)
-        _Metal_ShadowMultiColor("MetalShadowMultiColor", Color) = (0.48, 0.38, 0.58, 1)
+        _Metal_DarkColor("MetalDarkColor", Color) = (0.58, 0.3, 0.46, 1)
+        _Metal_ShadowMultiColor("MetalShadowMultiColor", Color) = (0.77, 0.67, 0.76, 1)
         _Metal_SpecColor("MetalSpecluarColor", Color) = (1, 1, 1, 1)
 
         [Header(Shadow mapping)]
@@ -84,7 +85,7 @@ Shader "SEEDzy/URP/Character/CartoonPreview"
         _SpecPower3("Power3", Range(0.01,15)) = 14.6
         _SpecPower4("Power4", Range(0.01,15)) = 10
         _SpecPower5("Power5", Range(0.01,15)) = 10
-        
+
         [HDR]_SpecColor("SpecularColor", Color) = (1,1,1,1)
         _SpecColorMulti ("ColorMulti ", Range(0, 1)) = 0.8
         _SpecColorMulti2("ColorMulti2", Range(0, 1)) = 0.1
@@ -134,7 +135,7 @@ Shader "SEEDzy/URP/Character/CartoonPreview"
 
             #pragma shader_feature_local_fragment _USE_NORMALSH
             #pragma shader_feature_local_fragment _USE_RAMPMAP 
-            #pragma shader_feature_local_fragment _IS_FACE 
+            #pragma shader_feature_local _IS_FACE 
             
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS
             #pragma multi_compile _ _MAIN_LIGHT_SHADOWS_CASCADE
