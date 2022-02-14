@@ -155,15 +155,16 @@ ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData, half NdotL,
     if(surfaceData.lightMap.x > 0.90)
     {
         //用逆转置是正确的，但是就效果表现上不需要那么精确，因此直接用V矩阵也没什么毛病
-        half3 normalVS = mul(UNITY_MATRIX_IT_MV, inputData.normalWS);
-        //half3 normalVS = mul(UNITY_MATRIX_V, inputData.normalWS);
-        half2 MT_UV = normalVS.xy * 0.5 + 0.5;
+        //half3 normalVS = mul(UNITY_MATRIX_IT_MV, inputData.normalWS);
+        half3 normalVS = mul(UNITY_MATRIX_V, inputData.normalWS);
+        half2 MT_UV = half2(normalVS.y * 1, normalVS.z) * 0.5 + 0.5;
 
-        finColor = min(_MT.Sample(sampler_MT, MT_UV) * _Metal_Brightness, 1);
+        finColor = saturate(_MT.Sample(sampler_MT, MT_UV) * _Metal_Brightness);
         //r6//r13
         finColor = lerp(_Metal_DarkColor, _Metal_LightColor, finColor) * surfaceData.albedo;
         //暂时没算__ES_CharacterMainLightBrightness
-        finColor = lerp(finColor * _Metal_SpecAttenInShadow, finColor, NdotL > _LightArea);
+        half lightAttenuation = (NdotL + surfaceData.lightMap.g) * 0.5;
+        finColor = lerp(finColor * _Metal_SpecAttenInShadow, finColor, lightAttenuation > _LightArea);
     
     
         half3 halfNormal = normalize(mainLight.direction + inputData.viewDirectionWS);  
@@ -171,7 +172,7 @@ ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData, half NdotL,
 
         //要处理高光在阴影内衰减
         //r0
-        finColor += min(spec * 15, 1) * _Metal_SpecColor * surfaceData.lightMap.z; //* _Metal_SpecAttenInShadow * __ES_CharacterMainLightBrightness
+        finColor += min(spec * 60, 1) * _Metal_SpecColor * surfaceData.lightMap.z; //* _Metal_SpecAttenInShadow * __ES_CharacterMainLightBrightness
     }
     //diffuse Flow
     else
