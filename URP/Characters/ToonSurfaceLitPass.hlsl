@@ -4,7 +4,7 @@
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Lighting.hlsl"
 
-//#include "NiloOutlineUtil.hlsl"
+#include "OutlineUtil.hlsl"
 // #include "NiloZOffset.hlsl"
 // #include "NiloInvLerpRemap.hlsl"
 
