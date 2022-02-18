@@ -171,6 +171,7 @@ half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData, half 
         //要处理高光在阴影内衰减
         //r0
         finColor += min(spec * 60, 1) * _Metal_SpecColor * surfaceData.lightMap.z; //* _Metal_SpecAttenInShadow * __ES_CharacterMainLightBrightness
+        finColor = lerp(finColor, finColor * surfaceData.emission, surfaceData.alpha);
     }
     //diffuse Flow
     else

@@ -50,11 +50,11 @@ struct v2f
 /// <summary>
 /// 将顶点沿着表面法线方向扩张
 /// </summary>
-float3 TransformPositionWSToOutlinePositionWS(float3 positionWS, float positionVS_Z, float3 normalWS)
+float3 TransformPositionWSToOutlinePositionWS(float3 positionWS, float positionVS_Z, float3 normalWS, float vertColWeight)
 {
     //you can replace it to your own method! Here we will write a simple world space method for tutorial reason, it is not the best method!
     //这里修正轮廓线宽度
-    float outlineExpandAmount = _OutlineWidth * GetOutlineCameraFovAndDistanceFixMultiplier(positionVS_Z);
+    float outlineExpandAmount = _OutlineWidth * GetOutlineCameraFovAndDistanceFixMultiplier(positionVS_Z) * vertColWeight;
     return positionWS + normalWS * outlineExpandAmount; 
 }
 
@@ -111,7 +111,7 @@ v2f VertexShaderWork(a2v input)
 //     外扩法线
 #ifdef ToonShaderIsOutline
     //ToDo临时用tangent存一下平滑法线，后面在改
-    positionWS = TransformPositionWSToOutlinePositionWS(vertexInput.positionWS, vertexInput.positionVS.z, vertexNormalInput.normalWS);
+    positionWS = TransformPositionWSToOutlinePositionWS(vertexInput.positionWS, vertexInput.positionVS.z, vertexNormalInput.normalWS, input.vertexColor.w);
 #endif
     // Computes fog factor per-vertex.
     half3 vertexLight = VertexLighting(vertexInput.positionWS, vertexNormalInput.normalWS);
@@ -139,21 +139,21 @@ v2f VertexShaderWork(a2v input)
     output.faceLeft = TransformObjectToWorldDir(half3(-1, 0, 0));
 #endif
 
-#ifdef ToonShaderIsOutline
-    // [Read ZOffset mask texture]
-    // we can't use tex2D() in vertex shader because ddx & ddy is unknown before rasterization, 
-    // so use tex2Dlod() with an explict mip level 0, put explict mip level 0 inside the 4th component of param uv)
-    float outlineZOffsetMaskTexExplictMipLevel = 0;
-    float outlineZOffsetMask = tex2Dlod(_OutlineZOffsetMaskTex, float4(input.uv,0,outlineZOffsetMaskTexExplictMipLevel)).r; //we assume it is a Black/White texture
-
-    // [Remap ZOffset texture value]
-    // flip texture read value so default black area = apply ZOffset, because usually outline mask texture are using this format(black = hide outline)
-    outlineZOffsetMask = 1-outlineZOffsetMask;
-    outlineZOffsetMask = invLerpClamp(_OutlineZOffsetMaskRemapStart,_OutlineZOffsetMaskRemapEnd,outlineZOffsetMask);// allow user to flip value or remap
-
-    // [Apply ZOffset, Use remapped value as ZOffset mask]
-    output.positionCS = NiloGetNewClipPosWithZOffset(output.positionCS, _OutlineZOffset * outlineZOffsetMask + 0.03 * _IsFace);
-#endif
+// #ifdef ToonShaderIsOutline
+//     // [Read ZOffset mask texture]
+//     // we can't use tex2D() in vertex shader because ddx & ddy is unknown before rasterization, 
+//     // so use tex2Dlod() with an explict mip level 0, put explict mip level 0 inside the 4th component of param uv)
+//     float outlineZOffsetMaskTexExplictMipLevel = 0;
+//     float outlineZOffsetMask = tex2Dlod(_OutlineZOffsetMaskTex, float4(input.uv,0,outlineZOffsetMaskTexExplictMipLevel)).r; //we assume it is a Black/White texture
+//
+//     // [Remap ZOffset texture value]
+//     // flip texture read value so default black area = apply ZOffset, because usually outline mask texture are using this format(black = hide outline)
+//     outlineZOffsetMask = 1-outlineZOffsetMask;
+//     outlineZOffsetMask = invLerpClamp(_OutlineZOffsetMaskRemapStart,_OutlineZOffsetMaskRemapEnd,outlineZOffsetMask);// allow user to flip value or remap
+//
+//     // [Apply ZOffset, Use remapped value as ZOffset mask]
+//     output.positionCS = NiloGetNewClipPosWithZOffset(output.positionCS, _OutlineZOffset * outlineZOffsetMask + 0.03 * _IsFace);
+// #endif
 
     // ShadowCaster pass needs special process to positionCS, else shadow artifact will appear
     //--------------------------------------------------------------------------------------
@@ -243,7 +243,7 @@ half4 ShadeFinalColor(v2f input) : SV_TARGET
     //return _MainLightColor.z;
     //return (half4)input.positionWSWithNdotL.w;
     //finColor = ApplyFog(finColor, input);
-    //return input.vertexColor.z;
+    //return input.vertexColor.w;
     return half4(finColor, surfaceData.alpha);
 }
 
