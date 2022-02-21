@@ -32,6 +32,7 @@ public class SEEDPostProcess : ScriptableRendererFeature
         private RenderTargetIdentifier _src;
         private RenderTargetHandle _TempRT;
         private Material _material;
+        private ToneMappingSetting _toneMappingSetting;
 
         public SEEDPostProcessPass()
         {
@@ -39,9 +40,10 @@ public class SEEDPostProcess : ScriptableRendererFeature
             _material = CoreUtils.CreateEngineMaterial(ShaderPath.PostProcess);
         }
         
-        public void SetUp(RenderTargetIdentifier src)
+        public void SetUp(RenderTargetIdentifier src, ToneMappingSetting toneMappingSetting)
         {
             _src = src;
+            _toneMappingSetting = toneMappingSetting;
         }
         //SEEDPostProcessPass
         public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
@@ -52,8 +54,9 @@ public class SEEDPostProcess : ScriptableRendererFeature
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
             CommandBuffer cmd = CommandBufferPool.Get("SEEDPostProcess");
+            _material.SetFloat("_Expossure", _toneMappingSetting.Expossure);
             cmd.Blit(_src, _TempRT.Identifier(), _material);
-            cmd.Blit(_TempRT.Identifier(), _src);
+            cmd.Blit(_TempRT.Identifier(), RenderTargetHandle.CameraTarget.Identifier());
             
             context.ExecuteCommandBuffer(cmd);
             CommandBufferPool.Release(cmd);
@@ -146,7 +149,7 @@ public class SEEDPostProcess : ScriptableRendererFeature
 
        if (toneMappingSetting.enable)
        {
-           PPPass.SetUp(renderer.cameraColorTarget);
+           PPPass.SetUp(renderer.cameraColorTarget, toneMappingSetting);
            renderer.EnqueuePass(PPPass);
        }
    }

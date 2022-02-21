@@ -51,6 +51,8 @@ namespace SEED.Rendering
         public bool enable = false;
         [EnumPaging] 
         public ToneMappingType Type = ToneMappingType.YS;
+        [Range(0,2)]
+        public float Expossure = 1;
     }
     
     [Serializable]

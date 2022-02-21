@@ -3,6 +3,7 @@ Shader "SEEDzy/URP/PostProcess"
     Properties
     {
         _MainTex ("Texture", 2D) = "white" {}
+        _Expossure("Expossure", Float) = 1
     }
     SubShader
     {
@@ -11,6 +12,7 @@ Shader "SEEDzy/URP/PostProcess"
 
         Pass
         {
+            name"YSToneMapping"
             Tags{"LightMode" = "UniversalForward"}
             HLSLPROGRAM
             #pragma vertex vert
@@ -20,6 +22,7 @@ Shader "SEEDzy/URP/PostProcess"
 
             CBUFFER_START(UnityPerMaterial)
             float4 _MainTex_ST;
+            half _Expossure;
             CBUFFER_END
 
             TEXTURE2D(_MainTex);        SAMPLER(sampler_MainTex);
@@ -52,6 +55,9 @@ Shader "SEEDzy/URP/PostProcess"
             {
                 // sample the texture
                 half4 col = SAMPLE_TEXTURE2D(_MainTex, sampler_MainTex, i.uv);
+
+                col *= _Expossure;
+                col = ((col * 1.36 + 0.047) * col)/(((col * 0.93) + 0.56) * col + 0.14);
                 return col;
             }
             ENDHLSL
