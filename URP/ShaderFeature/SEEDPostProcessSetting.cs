@@ -16,6 +16,7 @@ namespace SEED.Rendering
         internal static string GPUInstanceGrass = "SEEDzy/URP/GPUInstance/Grass";
         internal static string GenerateMipMaps = "SEEDzy/URP/GenerateMipMaps";
         internal static string GaussianBlur = "SEEDzy/URP/RenderFeature/Bloom";
+        internal static string PostProcess = "SEEDzy/URP/PostProcess";
     }
     #endregion
     
@@ -36,6 +37,20 @@ namespace SEED.Rendering
     public class ScreenSpaceFogSetting
     {
         public bool enable = false;
+    }
+    
+    [Serializable]
+    public class ToneMappingSetting
+    {
+        public enum ToneMappingType
+        {
+            YS,
+            Film,
+            ACES
+        }
+        public bool enable = false;
+        [EnumPaging] 
+        public ToneMappingType Type = ToneMappingType.YS;
     }
     
     [Serializable]

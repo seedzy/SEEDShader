@@ -15,6 +15,9 @@ public class SEEDPostProcess : ScriptableRendererFeature
     
     [Toggle("enable"),              GUIColor(0.8f,0.85f,1)]
    public ScreenSpaceShadowSetting screenSpaceShadowSetting = new ScreenSpaceShadowSetting();
+
+   [Toggle("enable"), GUIColor(0.8f, 0.85f, 1)]
+   public ToneMappingSetting toneMappingSetting     = new ToneMappingSetting();
    [Toggle("enable"),               GUIColor(0.8f,0.85f,1)]
    public SEED.Rendering.BloomSetting bloom          = new SEED.Rendering.BloomSetting();
    [Toggle("enable"),               GUIColor(0.8f,0.85f,1)]
@@ -26,16 +29,34 @@ public class SEEDPostProcess : ScriptableRendererFeature
    
    class SEEDPostProcessPass : ScriptableRenderPass
     {
-        internal ScreenSpaceShadowSetting _screenSpaceShadowSetting;
+        private RenderTargetIdentifier _src;
+        private RenderTargetHandle _TempRT;
+        private Material _material;
 
+        public SEEDPostProcessPass()
+        {
+            _TempRT.Init("TempRT");
+            _material = CoreUtils.CreateEngineMaterial(ShaderPath.PostProcess);
+        }
+        
+        public void SetUp(RenderTargetIdentifier src)
+        {
+            _src = src;
+        }
         //SEEDPostProcessPass
         public override void OnCameraSetup(CommandBuffer cmd, ref RenderingData renderingData)
         {
-            
+            RenderTextureDescriptor camRTDescriptor = renderingData.cameraData.cameraTargetDescriptor;
+            cmd.GetTemporaryRT(_TempRT.id, camRTDescriptor);
         }
         public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
         {
+            CommandBuffer cmd = CommandBufferPool.Get("SEEDPostProcess");
+            cmd.Blit(_src, _TempRT.Identifier(), _material);
+            cmd.Blit(_TempRT.Identifier(), _src);
             
+            context.ExecuteCommandBuffer(cmd);
+            CommandBufferPool.Release(cmd);
         }
         
         public override void OnCameraCleanup(CommandBuffer cmd)
@@ -83,7 +104,7 @@ public class SEEDPostProcess : ScriptableRendererFeature
        GenerateHiZBufferPass.renderPassEvent = RenderPassEvent.AfterRenderingPrePasses;
        //PostProcessMainPass
        PPPass = new SEEDPostProcessPass();
-       PPPass.renderPassEvent = RenderPassEvent.AfterRenderingTransparents;
+       PPPass.renderPassEvent = RenderPassEvent.AfterRenderingPostProcessing;
    }
 
    /// <summary>
@@ -94,6 +115,9 @@ public class SEEDPostProcess : ScriptableRendererFeature
    /// <param name="renderingData"></param>
    public override void AddRenderPasses(ScriptableRenderer renderer, ref RenderingData renderingData)
    {
+       
+       
+       
        if (screenSpaceShadowSetting.enable)
        {
            bool allowMainLightShadows = renderingData.shadowData.supportsMainLightShadows && renderingData.lightData.mainLightIndex != -1;
@@ -118,6 +142,12 @@ public class SEEDPostProcess : ScriptableRendererFeature
            //ToDo：暂时不知道单个renderFeature的结束事件，先在这释放cbuffer
            //InstanceBuffer.Release();
            GPUInstancePass?.ReleaseCullingBuffer();
+       }
+
+       if (toneMappingSetting.enable)
+       {
+           PPPass.SetUp(renderer.cameraColorTarget);
+           renderer.EnqueuePass(PPPass);
        }
    }
 
