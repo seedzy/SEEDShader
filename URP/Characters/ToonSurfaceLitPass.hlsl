@@ -18,6 +18,9 @@ struct a2v
     half4 tangentOS     : TANGENT;
     half4 vertexColor   : COLOR;
     float2 uv           : TEXCOORD0;
+#ifdef ToonShaderIsOutline
+    float3 smoothNormalOS : TEXCOORD1;
+#endif
 };
 
 // all pass will share this Varyings struct (define data needed from our vertex shader to our fragment shader)
@@ -111,7 +114,8 @@ v2f VertexShaderWork(a2v input)
 //     外扩法线
 #ifdef ToonShaderIsOutline
     //ToDo临时用tangent存一下平滑法线，后面在改
-    positionWS = TransformPositionWSToOutlinePositionWS(vertexInput.positionWS, vertexInput.positionVS.z, vertexNormalInput.normalWS, input.vertexColor.w);
+    half3 smoothNormalWS = TransformObjectToWorldNormal(input.smoothNormalOS);
+    positionWS = TransformPositionWSToOutlinePositionWS(vertexInput.positionWS, vertexInput.positionVS.z, smoothNormalWS, input.vertexColor.w * 2);
 #endif
     // Computes fog factor per-vertex.
     half3 vertexLight = VertexLighting(vertexInput.positionWS, vertexNormalInput.normalWS);

@@ -60,6 +60,10 @@ Material:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
         m_Offset: {x: 0, y: 0}
+    - _MT:
+        m_Texture: {fileID: 0}
+        m_Scale: {x: 1, y: 1}
+        m_Offset: {x: 0, y: 0}
     - _MainTex:
         m_Texture: {fileID: 0}
         m_Scale: {x: 1, y: 1}
@@ -113,13 +117,16 @@ Material:
     - _CelShadeSoftness: 0.05
     - _ClearCoatMask: 0
     - _ClearCoatSmoothness: 0
+    - _ColorTone: 1
     - _Cull: 2
+    - _Culling: 0
     - _Cutoff: 0.5
     - _DetailAlbedoMapScale: 1
     - _DetailNormalMapScale: 1
     - _DirectLightMultiplier: 1
     - _DstBlend: 0
     - _EmissionMulByBaseColor: 0
+    - _EmissionPower: 1
     - _EnvironmentReflections: 1
     - _GlossMapScale: 0
     - _Glossiness: 0
@@ -127,7 +134,11 @@ Material:
     - _IndirectLightMultiplier: 1
     - _IsFace: 0
     - _LightArea: 0.5
+    - _LightRatio: 0.3
     - _MainLightIgnoreCelShade: 0
+    - _Metal_Brightness: 3
+    - _Metal_SpecAttenInShadow: 0.2
+    - _Metal_SpecPower: 90
     - _Metallic: 0
     - _OcclusionRemapEnd: 1
     - _OcclusionRemapStart: 0
@@ -144,6 +155,16 @@ Material:
     - _ReceiveShadows: 1
     - _Smoothness: 0.5
     - _SmoothnessTextureChannel: 0
+    - _SpecColorMulti: 0.8
+    - _SpecColorMulti2: 0.1
+    - _SpecColorMulti3: 0.8
+    - _SpecColorMulti4: 0.1
+    - _SpecColorMulti5: 0.1
+    - _SpecPower: 15
+    - _SpecPower2: 10
+    - _SpecPower3: 14.6
+    - _SpecPower4: 10
+    - _SpecPower5: 10
     - _SpecularHighlights: 1
     - _SpecularPower: 10
     - _SrcBlend: 1
@@ -152,7 +173,9 @@ Material:
     - _UseAlphaClipping: 0
     - _UseEmission: 0
     - _UseOcclusion: 0
+    - _UseRampMap: 1
     - _UseSpecularMask: 0
+    - _UseVertexRampWidth: 1
     - _WorkflowMode: 1
     - _ZWrite: 1
     - _useRampMap: 1
@@ -161,7 +184,12 @@ Material:
     - _Color: {r: 1, g: 1, b: 1, a: 1}
     - _EmissionColor: {r: 0, g: 0, b: 0, a: 1}
     - _EmissionMapChannelMask: {r: 1, g: 1, b: 1, a: 0}
+    - _FaceShadowMultiCol: {r: 0.95, g: 0.74, b: 0.74, a: 1}
     - _IndirectLightMinColor: {r: 0.09999997, g: 0.09999997, b: 0.09999997, a: 1}
+    - _Metal_DarkColor: {r: 0.58, g: 0.29999998, b: 0.45999992, a: 1}
+    - _Metal_LightColor: {r: 1, g: 1, b: 1, a: 1}
+    - _Metal_ShadowMultiColor: {r: 0.77, g: 0.67, b: 0.76, a: 1}
+    - _Metal_SpecColor: {r: 1, g: 1, b: 1, a: 1}
     - _OcclusionMapChannelMask: {r: 1, g: 0, b: 0, a: 0}
     - _OutlineColor: {r: 0.5, g: 0.5, b: 0.5, a: 1}
     - _RampMapLayerSwitch: {r: 0, g: 0, b: 0, a: 0}
