@@ -189,6 +189,10 @@ half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData, half 
         if(maxChannel > 1)
             finColor /= maxChannel;
     }
+#ifdef ToonShaderIsOutline
+    finColor = directDiffuse;
+#endif
+    
 
     return finColor; //*ambientBrightness 
     //return CompositeAllLightResults(indirectResult, mainLightResult, additionalLightSumResult, emissionResult, surfaceData, lightingData);

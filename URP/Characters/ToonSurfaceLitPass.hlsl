@@ -238,6 +238,7 @@ half4 ShadeFinalColor(v2f input) : SV_TARGET
     //混合描边和贴图颜色
 #ifdef ToonShaderIsOutline
     finColor = ConvertSurfaceColorToOutlineColor(finColor);
+    finColor = surfaceData.albedo * _OutlineColor;
 #endif
 
     //return _MainLightColor.z;
