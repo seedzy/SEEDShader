@@ -27,7 +27,7 @@ half3 DirectDiffuseWithoutAlbedo(ToonSurfaceData surfaceData, InputData inputDat
     //lambertDiffuse    
 #ifdef _USE_RAMPMAP
 
-    half shadowWeight = surfaceData.lightMap.g;
+    half shadowWeight = surfaceData.lightMap.g * surfaceData.vertexColor.r;
     //half shadowAttenuation = 0.5 * NdotL + 0.5;
     //half shadowAttenuation = (NdotL * shadowWeight) * 0.5;
     //就这两小步好像确实没必要lerpstep的样子
@@ -152,9 +152,10 @@ half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData, half 
     //specular Flow
     if(surfaceData.lightMap.x > 0.90)
     {
-        //用逆转置是正确的，但是就效果表现上不需要那么精确，因此直接用V矩阵也没什么毛病
-        half3 normalVS = mul(UNITY_MATRIX_IT_MV, inputData.normalWS);
-        //half3 normalVS = mul(UNITY_MATRIX_V, inputData.normalWS);
+        //X用逆转置是正确的，但是就效果表现上不需要那么精确，因此直接用V矩阵也没什么毛病
+        //事实证明有时候对的不一定是对的，错误的转换可以使法线有一定的偏移，而使其随视线偏移的幅度变大，提升伪金属的反射效果
+        //half3 normalVS = mul(UNITY_MATRIX_IT_MV, inputData.normalWS);
+        half3 normalVS = mul(UNITY_MATRIX_V, inputData.normalWS);
         half2 MT_UV = half2(normalVS.y * 1, normalVS.z) * 0.5 + 0.5;
 
         finColor = saturate(_MT.Sample(sampler_MT, MT_UV) * _Metal_Brightness);
