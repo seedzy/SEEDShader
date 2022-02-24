@@ -30,6 +30,7 @@ public class SEEDPostProcess : ScriptableRendererFeature
    class SEEDPostProcessPass : ScriptableRenderPass
     {
         private RenderTargetIdentifier _src;
+        private RenderTargetIdentifier _dis;
         private RenderTargetHandle _TempRT;
         private Material _material;
         private ToneMappingSetting _toneMappingSetting;
@@ -40,9 +41,10 @@ public class SEEDPostProcess : ScriptableRendererFeature
             _material = CoreUtils.CreateEngineMaterial(ShaderPath.PostProcess);
         }
         
-        public void SetUp(RenderTargetIdentifier src, ToneMappingSetting toneMappingSetting)
+        public void SetUp(RenderTargetIdentifier src, RenderTargetIdentifier dis, ToneMappingSetting toneMappingSetting)
         {
             _src = src;
+            _dis = dis;
             _toneMappingSetting = toneMappingSetting;
         }
         //SEEDPostProcessPass
@@ -56,7 +58,7 @@ public class SEEDPostProcess : ScriptableRendererFeature
             CommandBuffer cmd = CommandBufferPool.Get("SEEDPostProcess");
             _material.SetFloat("_Expossure", _toneMappingSetting.Expossure);
             cmd.Blit(_src, _TempRT.Identifier(), _material);
-            cmd.Blit(_TempRT.Identifier(), RenderTargetHandle.CameraTarget.Identifier());
+            cmd.Blit(_TempRT.Identifier(), _dis);
             
             context.ExecuteCommandBuffer(cmd);
             CommandBufferPool.Release(cmd);
@@ -74,7 +76,7 @@ public class SEEDPostProcess : ScriptableRendererFeature
    private ScreenSpaceShadowPostPass SSShadowPost           = null;
    private GPUInstancePass           GPUInstancePass        = null;
    private GenerateHiZBufferPass     GenerateHiZBufferPass  = null;
-   
+   private RenderTargetHandle m_AfterPostProcessColor;
 
 
    /// <summary>
@@ -107,7 +109,7 @@ public class SEEDPostProcess : ScriptableRendererFeature
        GenerateHiZBufferPass.renderPassEvent = RenderPassEvent.AfterRenderingPrePasses;
        //PostProcessMainPass
        PPPass = new SEEDPostProcessPass();
-       PPPass.renderPassEvent = RenderPassEvent.AfterRenderingPostProcessing;
+       PPPass.renderPassEvent = RenderPassEvent.BeforeRenderingPostProcessing;
    }
 
    /// <summary>
@@ -149,7 +151,9 @@ public class SEEDPostProcess : ScriptableRendererFeature
 
        if (toneMappingSetting.enable)
        {
-           PPPass.SetUp(renderer.cameraColorTarget, toneMappingSetting);
+           //m_AfterPostProcessColor.Init("_AfterPostProcessTexture");
+           //var sourceForFinalPass = (renderingData.cameraData.postProcessEnabled) ? m_AfterPostProcessColor : RenderTargetHandle.CameraTarget;
+           PPPass.SetUp(renderer.cameraColorTarget, RenderTargetHandle.CameraTarget.Identifier(), toneMappingSetting);
            renderer.EnqueuePass(PPPass);
        }
    }
