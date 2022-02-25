@@ -142,21 +142,21 @@ v2f VertexShaderWork(a2v input)
     output.faceLeft = TransformObjectToWorldDir(half3(-1, 0, 0));
 #endif
 
-#ifdef ToonShaderIsOutline
-    // [Read ZOffset mask texture]
-    // we can't use tex2D() in vertex shader because ddx & ddy is unknown before rasterization, 
-    // so use tex2Dlod() with an explict mip level 0, put explict mip level 0 inside the 4th component of param uv)
-    // float outlineZOffsetMaskTexExplictMipLevel = 0;
-    // float outlineZOffsetMask = tex2Dlod(_OutlineZOffsetMaskTex, float4(input.uv,0,outlineZOffsetMaskTexExplictMipLevel)).r; //we assume it is a Black/White texture
-
-    // [Remap ZOffset texture value]
-    // flip texture read value so default black area = apply ZOffset, because usually outline mask texture are using this format(black = hide outline)
-    // outlineZOffsetMask = 1-outlineZOffsetMask;
-    // outlineZOffsetMask = invLerpClamp(_OutlineZOffsetMaskRemapStart,_OutlineZOffsetMaskRemapEnd,outlineZOffsetMask);// allow user to flip value or remap
-
-    // [Apply ZOffset, Use remapped value as ZOffset mask]
-    output.positionCS = NiloGetNewClipPosWithZOffset(output.positionCS, _OutlineZOffset * outlineZOffsetMask + 0.03 * _IsFace);
-#endif
+// #ifdef ToonShaderIsOutline
+//     // [Read ZOffset mask texture]
+//     // we can't use tex2D() in vertex shader because ddx & ddy is unknown before rasterization, 
+//     // so use tex2Dlod() with an explict mip level 0, put explict mip level 0 inside the 4th component of param uv)
+//     // float outlineZOffsetMaskTexExplictMipLevel = 0;
+//     // float outlineZOffsetMask = tex2Dlod(_OutlineZOffsetMaskTex, float4(input.uv,0,outlineZOffsetMaskTexExplictMipLevel)).r; //we assume it is a Black/White texture
+//
+//     // [Remap ZOffset texture value]
+//     // flip texture read value so default black area = apply ZOffset, because usually outline mask texture are using this format(black = hide outline)
+//     // outlineZOffsetMask = 1-outlineZOffsetMask;
+//     // outlineZOffsetMask = invLerpClamp(_OutlineZOffsetMaskRemapStart,_OutlineZOffsetMaskRemapEnd,outlineZOffsetMask);// allow user to flip value or remap
+//
+//     // [Apply ZOffset, Use remapped value as ZOffset mask]
+//     output.positionCS = NiloGetNewClipPosWithZOffset(output.positionCS, _OutlineZOffset * outlineZOffsetMask + 0.03 * _IsFace);
+// #endif
 
     // ShadowCaster pass needs special process to positionCS, else shadow artifact will appear
     //--------------------------------------------------------------------------------------
