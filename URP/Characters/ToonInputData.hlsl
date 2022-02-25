@@ -59,6 +59,7 @@ CBUFFER_START(UnityPerMaterial)
     half3   _FaceShadowMultiCol;
 
     //Metal
+    half4   _MT_ST;
     half    _Metal_Brightness;
     half    _Metal_SpecPower;
     half    _Metal_SpecAttenInShadow;

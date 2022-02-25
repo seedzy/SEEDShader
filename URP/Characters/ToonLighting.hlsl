@@ -156,7 +156,7 @@ half3 ToonSurfaceShading(ToonSurfaceData surfaceData, InputData inputData, half 
         //事实证明有时候对的不一定是对的，错误的转换可以使法线有一定的偏移，而使其随视线偏移的幅度变大，提升伪金属的反射效果
         //half3 normalVS = mul(UNITY_MATRIX_IT_MV, inputData.normalWS);
         half3 normalVS = mul(UNITY_MATRIX_V, inputData.normalWS);
-        half2 MT_UV = half2(normalVS.y * 1, normalVS.z) * 0.5 + 0.5;
+        half2 MT_UV = half2(normalVS.x * _MT_ST.x, normalVS.y) * 0.5 + 0.5;
 
         finColor = saturate(_MT.Sample(sampler_MT, MT_UV) * _Metal_Brightness);
         //r6//r13
