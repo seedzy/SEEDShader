@@ -76,7 +76,6 @@ public class SEEDPostProcess : ScriptableRendererFeature
    private ScreenSpaceShadowPostPass SSShadowPost           = null;
    private GPUInstancePass           GPUInstancePass        = null;
    private GenerateHiZBufferPass     GenerateHiZBufferPass  = null;
-   private RenderTargetHandle m_AfterPostProcessColor;
 
 
    /// <summary>
@@ -109,7 +108,7 @@ public class SEEDPostProcess : ScriptableRendererFeature
        GenerateHiZBufferPass.renderPassEvent = RenderPassEvent.AfterRenderingPrePasses;
        //PostProcessMainPass
        PPPass = new SEEDPostProcessPass();
-       PPPass.renderPassEvent = RenderPassEvent.BeforeRenderingPostProcessing;
+       PPPass.renderPassEvent = RenderPassEvent.AfterRenderingPostProcessing;
    }
 
    /// <summary>
