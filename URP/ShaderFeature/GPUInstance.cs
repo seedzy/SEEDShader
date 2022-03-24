@@ -65,8 +65,13 @@ class GPUInstancePass : ScriptableRenderPass
 
     public override void Execute(ScriptableRenderContext context, ref RenderingData renderingData)
     {
-        if(_groundTran == null || _gpuInstanceSetting.instanceMesh == null || _material == null || _gpuInstanceSetting.computeShader == null)
+        if (_groundTran == null || _gpuInstanceSetting.instanceMesh == null || _material == null ||
+            _gpuInstanceSetting.computeShader == null)
+        {
+            Debug.LogError("有初始数据为空");
             return;
+        }
+
         
         _cmd = CommandBufferPool.Get(cmdName);
         ComputeShader hizCS = _gpuInstanceSetting.computeShader;

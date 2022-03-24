@@ -18,6 +18,7 @@ struct SurfaceInput
     half  occlusion;
     half3 emissionMask;
     half3 normalTS;
+    half  IOR;
 };
 
 
@@ -200,7 +201,9 @@ half DisneyDiffuse(half NdotV, half NdotL, half LdotV, half perceptualRoughness)
 /// </summary>
 half2 BRDF_Specular_Lut(half NdotV, half roughness)
 {
-    return _SpecularBRDFTex.Sample(sampler_SpecularBRDFTex, half2(NdotV, roughness)).rg;
+    //这里不lerp效果有点奇葩啊，粗糙度最大时90度视角会有个黑圈
+    return _SpecularBRDFTex.Sample(sampler_SpecularBRDFTex, half2(lerp(0, 0.99, NdotV), lerp(0, 0.99, roughness))).rg;
 }
+
 
 #endif

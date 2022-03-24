@@ -91,6 +91,33 @@ half3 DirectLight_Stylized(InputData inputData, SurfaceInput surfaceInput, BRDFI
     
     return diffuseTerm + spevularTerm;
 }
+
+half4 StylizedWaterShading(InputData inputData, SurfaceInput surfaceInput)
+{
+    Light light = GetMainLight();
+
+    half3 lightDirectionWS = normalize(light.direction);
+
+    half3 refractRay = refract(-inputData.viewDirectionWS, inputData.normalWS, 1 / surfaceInput.IOR);
+
+    //inputData.viewDirectionWS = refractRay;
+    
+    BRDFInput brdfInput;
+    InitBRDFInput(inputData, surfaceInput, lightDirectionWS, brdfInput);
+
+    half3 color = DirectLight(inputData, surfaceInput, brdfInput);
+    color *= light.color * saturate(dot(inputData.normalWS, lightDirectionWS));
+    //URP包括Builtin都没除pi，为了保持亮度，这里先加回去
+    color *= PI;
+    
+    color += IndirectLight(inputData, surfaceInput, brdfInput);
+    
+    color += surfaceInput.emissionMask * surfaceInput.albedo.rgb;
+
+    
+    //return surfaceInput.albedo;
+    return half4(color, surfaceInput.albedo.a);
+}
 // half4 DisneyDiffuseSpecularLutPBR_Stylized(InputData inputData, SurfaceInput surfaceInput)
 // {
 //     Light light = GetMainLight();

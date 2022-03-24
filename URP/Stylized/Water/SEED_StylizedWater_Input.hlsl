@@ -3,10 +3,11 @@
 
 #include "Packages/com.unity.render-pipelines.universal/ShaderLibrary/Core.hlsl"
 #include "Assets/Shader/SEEDShader/ShaderLibrary/BRDF.hlsl"
-#include "LitUniversalCBuffer.hlsl"
+#include "Assets/Shader/SEEDShader/SEEDPBR/LitUniversalCBuffer.hlsl"
     
 CBUFFER_START(UnityPerMaterial)
 LIT_UNIVERSAL_CBUFFER
+half _IOR;
 CBUFFER_END
 
 TEXTURE2D(_BaseMap);      SAMPLER(sampler_BaseMap); 
@@ -44,7 +45,7 @@ inline void InitLitSurfaceData(float2 uv, out SurfaceInput outSurfaceInput)
     outSurfaceInput.occlusion    = (1 - mixData.b) * _Occlusion;
     outSurfaceInput.emissionMask = mixData.a * _Emission * _EmissionColor;
     outSurfaceInput.normalTS     = SampleNormal(uv, TEXTURE2D_ARGS(_BumpMap, sampler_BumpMap), _BumpScale);
-    outSurfaceInput.IOR          = 1;
+    outSurfaceInput.IOR          = _IOR;
 }
 
 
